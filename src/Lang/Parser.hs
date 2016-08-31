@@ -107,6 +107,7 @@ letExpr = do
   body <- expression
   return $ LetExpr var val body
 
+-- | MinusExpr ::= minus (Expression)
 minusExpr :: Parser Expression
 minusExpr = do
   _ <- keyWord "minus"
@@ -119,6 +120,7 @@ minusExpr = do
 --                | IfExpr
 --                | VarExpr
 --                | LetExpr
+--                | MinusExpr
 expression :: Parser Expression
 expression = try constExpr
          <|> try diffExpr
