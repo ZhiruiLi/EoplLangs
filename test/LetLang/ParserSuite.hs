@@ -12,12 +12,11 @@ import           Text.Megaparsec.String
 tests :: Test
 tests = TestList
   [ TestLabel "Test const expression" testConstExpr
-  , TestLabel "Test binary operate expression" testBinOpExpr
-  , TestLabel "Test isZero expression" testIsZeroExpr
+  , TestLabel "Test binary-operator expression" testBinOpExpr
+  , TestLabel "Test unary-operator expression" testUnaryOpExpr
   , TestLabel "Test if expression" testIfExpr
   , TestLabel "Test var expression" testVarExpr
   , TestLabel "Test let expression" testLetExpr
-  , TestLabel "Test minus expression" testMinusExpr
   , TestLabel "Test expression" testExpression
   , TestLabel "Test parse program" testParseProgram
   ]
@@ -59,17 +58,18 @@ testBinOpExpr = TestList
   ]
   where testEq = parserEqCase binOpExpr
 
-testIsZeroExpr :: Test
-testIsZeroExpr = TestList
-  [ testEq "Parse isZero expression (no space)" (IsZeroExpr (ConstExpr 1)) "zero?(1)"
-  , testEq "Parse isZero expression (with space)" (IsZeroExpr (ConstExpr 3)) "zero? ( 3  )"
+testUnaryOpExpr :: Test
+testUnaryOpExpr = TestList
+  [ testEq "Parse isZero expression (no space)" (UnaryOpExpr IsZero (ConstExpr 1)) "zero?(1)"
+  , testEq "Parse isZero expression (with space)" (UnaryOpExpr IsZero (ConstExpr 3)) "zero? ( 3  )"
+  , testEq "Parse minus expression" (UnaryOpExpr Minus (ConstExpr 1)) "minus(1)"
   ]
-  where testEq = parserEqCase isZeroExpr
+  where testEq = parserEqCase unaryOpExpr
 
 testIfExpr :: Test
 testIfExpr = TestList
   [ testEq "Parse if expression"
-           (IfExpr (IsZeroExpr (ConstExpr 3)) (ConstExpr 4) (ConstExpr 5))
+           (IfExpr (UnaryOpExpr IsZero (ConstExpr 3)) (ConstExpr 4) (ConstExpr 5))
            "if zero?(3) then 4 else 5"
   ]
   where testEq = parserEqCase ifExpr
@@ -91,11 +91,6 @@ testLetExpr = TestList
   ]
   where testEq = parserEqCase letExpr
 
-testMinusExpr :: Test
-testMinusExpr = TestList
-  [ testEq "Parse minus expression" (MinusExpr (ConstExpr 1)) "minus(1)" ]
-  where testEq = parserEqCase minusExpr
-
 testExpression :: Test
 testExpression = TestList
   [ testFail "Parse negative numbers should fail" "-3"
@@ -103,7 +98,7 @@ testExpression = TestList
   , testEq "Parse complex expression"
            (LetExpr "bar"
                     (ConstExpr 1)
-                    (IfExpr (IsZeroExpr (VarExpr "bar"))
+                    (IfExpr (UnaryOpExpr IsZero (VarExpr "bar"))
                             (ConstExpr 3)
                             (VarExpr "zero")))
            "let bar = 1 in if zero? (bar) then 3 else zero"

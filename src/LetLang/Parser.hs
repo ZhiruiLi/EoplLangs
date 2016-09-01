@@ -1,12 +1,11 @@
 module LetLang.Parser
 ( constExpr
 , binOpExpr
-, isZeroExpr
+, unaryOpExpr
 , ifExpr
 , varExpr
 , letExpr
 , expression
-, minusExpr
 , program
 , parseProgram
 ) where
@@ -46,19 +45,31 @@ keyWord w = string w *> notFollowedBy alphaNumChar *> spaceConsumer
 reservedWords :: [String]
 reservedWords  =
   [ "let", "in", "if", "then", "else", "zero?", "minus", "equal?"
-  , "greater?", "less?" ]
+  , "greater?", "less?", "cons", "car", "cdr", "emptyList"
+  ]
 
-binOpsMap :: [(String, Op)]
+binOpsMap :: [(String, BinOp)]
 binOpsMap =
   [ ("+", Add), ("-", Sub), ("*", Mul), ("/", Div), ("equal?", Eq)
-  , ("greater?", Gt), ("less?", Le) ]
+  , ("greater?", Gt), ("less?", Le), ("cons", Cons) ]
 
-binOp :: Parser Op
+binOp :: Parser BinOp
 binOp = do
   opStr <- foldl1 (<|>) (fmap (try . symbol . fst) binOpsMap)
   return $ fromMaybe
     (error ("Unknown operator '" `mappend` opStr `mappend` "'"))
     (lookup opStr binOpsMap)
+
+unaryOpsMap :: [(String, UnaryOp)]
+unaryOpsMap =
+  [ ("car", Car), ("cdr", Cdr), ("minus", Minus), ("zero?", IsZero) ]
+
+unaryOp :: Parser UnaryOp
+unaryOp = do
+  opStr <- foldl1 (<|>) (fmap (try . symbol . fst) unaryOpsMap)
+  return $ fromMaybe
+    (error ("Unknown operator '" `mappend` opStr `mappend` "'"))
+    (lookup opStr unaryOpsMap)
 
 -- | Identifier ::= String (without reserved words)
 identifier :: Parser String
@@ -72,29 +83,31 @@ identifier = lexeme (p >>= check)
 integer :: Parser Integer
 integer = lexeme L.integer
 
+-- expressionPair ::= (Expression, Expression)
+expressionPair :: Parser (Expression, Expression)
+expressionPair = parens $ do
+  expr1 <- expression
+  _ <- comma
+  expr2 <- expression
+  return (expr1, expr2)
+
 -- | ConstExpr ::= Number
 constExpr :: Parser Expression
 constExpr = ConstExpr <$> integer
 
--- | BinOpExpr ::= BinOp(Expression, Expression)
+-- | BinOpExpr ::= BinOp (Expression, Expression)
 binOpExpr :: Parser Expression
 binOpExpr = do
   op <- binOp
-  exprPair <- parens body
+  exprPair <- expressionPair
   return $ uncurry (BinOpExpr op) exprPair
-  where
-    body = do
-      expr1 <- expression
-      _ <- comma
-      expr2 <- expression
-      return (expr1, expr2)
 
--- | IsZeroExpr ::= zero? (Expression)
-isZeroExpr :: Parser Expression
-isZeroExpr  = do
-  _ <- keyWord "zero?"
+-- | UnaryOpExpr ::= UnaryOp (Expression)
+unaryOpExpr :: Parser Expression
+unaryOpExpr = do
+  op <- unaryOp
   expr <- parens expression
-  return $ IsZeroExpr expr
+  return $ UnaryOpExpr op expr
 
 -- | IfExpr ::= if Expression then Expression
 ifExpr :: Parser Expression
@@ -122,28 +135,24 @@ letExpr = do
   body <- expression
   return $ LetExpr var val body
 
--- | MinusExpr ::= minus (Expression)
-minusExpr :: Parser Expression
-minusExpr = do
-  _ <- keyWord "minus"
-  expr <- parens expression
-  return $ MinusExpr expr
+-- | EmptyListExpr ::= emptyList
+emptyListExpr :: Parser Expression
+emptyListExpr = keyWord "emptyList" >> return EmptyListExpr
 
 -- | Expression ::= ConstExpr
 --                | BinOpExpr
---                | IsZeroExpr
+--                | UnaryOpExpr
 --                | IfExpr
 --                | VarExpr
 --                | LetExpr
---                | MinusExpr
 expression :: Parser Expression
 expression = try constExpr
          <|> try binOpExpr
-         <|> try isZeroExpr
+         <|> try unaryOpExpr
          <|> try ifExpr
          <|> try varExpr
          <|> try letExpr
-         <|> minusExpr
+         <|> try emptyListExpr
 
 program :: Parser Program
 program = do
