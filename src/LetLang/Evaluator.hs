@@ -11,12 +11,8 @@ import           LetLang.Data.Expression
 import           LetLang.Data.Program
 import           LetLang.Parser
 
-run :: String -> ExpressedValue
-run input = case parseProgram input of
-  Left msg   -> error msg
-  Right prog -> case evalProgram prog of
-    Left msg -> error msg
-    Right v  -> v
+run :: String -> Either String ExpressedValue
+run input = parseProgram input >>= evalProgram
 
 eval :: Expression -> Either String ExpressedValue
 eval = flip valueOf empty

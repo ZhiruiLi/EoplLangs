@@ -1,4 +1,6 @@
 module Main where
 
+import           Repl
+
 main :: IO ()
-main = print "hello world"
+main = repl

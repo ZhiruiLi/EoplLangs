@@ -20,6 +20,7 @@ library
                      , LetLang.Data.ExpressedValue
                      , LetLang.Data.Expression
                      , LetLang.Data.Program
+                     , Repl
   build-depends:       base 
                      , megaparsec
                      , containers
