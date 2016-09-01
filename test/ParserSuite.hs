@@ -12,7 +12,7 @@ import           Text.Megaparsec.String
 tests :: Test
 tests = TestList
   [ TestLabel "Test const expression" testConstExpr
-  , TestLabel "Test diff expression" testDiffExpr
+  , TestLabel "Test binary operate expression" testBinOpExpr
   , TestLabel "Test isZero expression" testIsZeroExpr
   , TestLabel "Test if expression" testIfExpr
   , TestLabel "Test var expression" testVarExpr
@@ -45,16 +45,16 @@ testConstExpr = TestList
     testEq = parserEqCase constExpr
     testFail = parserFailCase constExpr
 
-testDiffExpr :: Test
-testDiffExpr = TestList
+testBinOpExpr :: Test
+testBinOpExpr = TestList
   [ testEq "Parse diff expression (no space)"
-           (DiffExpr (ConstExpr 3) (ConstExpr 4))
+           (BinOpExpr Sub (ConstExpr 3) (ConstExpr 4))
            "-(3,4)"
   , testEq "Parse diff expression (with spaces)"
-           (DiffExpr (ConstExpr 10) (ConstExpr 24))
-           "- (  10  ,    24 )"
+           (BinOpExpr Mul (ConstExpr 10) (ConstExpr 24))
+           "* (  10  ,    24 )"
   ]
-  where testEq = parserEqCase diffExpr
+  where testEq = parserEqCase binOpExpr
 
 testIsZeroExpr :: Test
 testIsZeroExpr = TestList

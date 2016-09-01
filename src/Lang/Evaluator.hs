@@ -29,17 +29,8 @@ valueOf (ConstExpr n) _   = Right $ NumVal n
 valueOf (VarExpr var) env = case applySafe env var of
   Nothing  -> Left $ "Not in scope: " `mappend` var
   Just val -> Right val
-valueOf (DiffExpr expr1 expr2) env =
-  case (val1, val2) of
-    (Right (NumVal n1), Right (NumVal n2)) -> Right . NumVal $ n1 - n2
-    (msg@(Left _), _) -> msg
-    (_, msg@(Left _)) -> msg
-    (a, b) -> Left $
-      "Operands of diff expression should both be numbers, but got: " `mappend`
-      show a `mappend` " and " `mappend` show b
-  where
-    val1 = valueOf expr1 env
-    val2 = valueOf expr2 env
+valueOf (BinOpExpr op expr1 expr2) env =
+  evalBinOpExpr op expr1 expr2 env
 valueOf (IsZeroExpr expr) env =
   case valueOf expr env of
     Right (NumVal n) -> Right . BoolVal $ n == 0
@@ -66,3 +57,34 @@ valueOf (LetExpr var valExpr expr) env =
     Left msg  -> Left msg
     Right val -> valueOf expr (extend var val env)
 
+boolOpMap :: [(Op, Bool -> Bool -> Bool)]
+boolOpMap = []
+
+numOpMap :: [(Op, Integer -> Integer -> Integer)]
+numOpMap = [(Add, (+)), (Sub, (-)), (Mul, (*)), (Div, div)]
+
+evalBinOpExpr op expr1 expr2 env =
+  case (wrapVal1, wrapVal2) of
+    (msg@(Left _), _) -> msg
+    (_, msg@(Left _)) -> msg
+    (Right val1, Right val2) ->
+      case lookup op numOpMap of
+        Just func -> case (val1, val2) of
+          (NumVal n1, NumVal n2) -> Right . NumVal $ func n1 n2
+          (a, b)                 -> numError a b
+        Nothing -> case lookup op boolOpMap of
+          Just func -> case (val1, val2) of
+            (BoolVal b1, BoolVal b2) -> Right . BoolVal $ func b1 b2
+            (a, b)                   -> boolError a b
+          Nothing -> invalidError op
+  where
+    wrapVal1 = valueOf expr1 env
+    wrapVal2 = valueOf expr2 env
+    opError typeName a b = Left $ unlines
+      [ "Operands of binary ", typeName, " operate expression "
+      , "should both be ", typeName, "s, but got: "
+      , show a, " and ", show b
+      ]
+    numError = opError "number"
+    boolError = opError "boolean value"
+    invalidError op = error $ "Invalid operator: " `mappend` show op

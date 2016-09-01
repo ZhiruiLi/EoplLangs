@@ -15,7 +15,7 @@ tests = TestList
   [ testEq "Eval const" (NumVal 3) "3"
   , testEq "Eval bounded var" (NumVal 5) "v"
   , testNoBound "Eval no-bounded var" "y"
-  , testEq "Eval diff" (NumVal 5) "-(10, 5)"
+  , testEq "Eval binary number operator" (NumVal 5) "-(10, 5)"
   , testEq "Eval let"
            (NumVal 3)
            $ unlines

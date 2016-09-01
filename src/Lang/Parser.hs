@@ -1,6 +1,6 @@
 module Lang.Parser
 ( constExpr
-, diffExpr
+, binOpExpr
 , isZeroExpr
 , ifExpr
 , varExpr
@@ -12,6 +12,7 @@ module Lang.Parser
 ) where
 
 import           Control.Monad          (void)
+import           Data.Maybe             (fromMaybe)
 import           Lang.Data.Expression
 import           Lang.Data.Program
 import           Text.Megaparsec
@@ -45,6 +46,16 @@ keyWord w = string w *> notFollowedBy alphaNumChar *> spaceConsumer
 reservedWords :: [String]
 reservedWords  = ["let", "in", "if", "then", "else", "zero?", "minus"]
 
+binOpsMap :: [(String, Op)]
+binOpsMap = [("+", Add), ("-", Sub), ("*", Mul), ("/", Div)]
+
+binOp :: Parser Op
+binOp = do
+  opStr <- foldl1 (<|>) (fmap (try . symbol . fst) binOpsMap)
+  return $ fromMaybe
+    (error ("Unknown operator '" `mappend` opStr `mappend` "'"))
+    (lookup opStr binOpsMap)
+
 -- | Identifier ::= String (without reserved words)
 identifier :: Parser String
 identifier = lexeme (p >>= check)
@@ -61,14 +72,14 @@ integer = lexeme L.integer
 constExpr :: Parser Expression
 constExpr = ConstExpr <$> integer
 
--- | DiffExpr ::= -(Expression, Expression)
-diffExpr :: Parser Expression
-diffExpr = do
-  _ <- minus
-  pair <- body
-  return $ uncurry DiffExpr pair
+-- | BinOpExpr ::= BinOp(Expression, Expression)
+binOpExpr :: Parser Expression
+binOpExpr = do
+  op <- binOp
+  exprPair <- parens body
+  return $ uncurry (BinOpExpr op) exprPair
   where
-    body = parens $ do
+    body = do
       expr1 <- expression
       _ <- comma
       expr2 <- expression
@@ -115,7 +126,7 @@ minusExpr = do
   return $ MinusExpr expr
 
 -- | Expression ::= ConstExpr
---                | DiffExpr
+--                | BinOpExpr
 --                | IsZeroExpr
 --                | IfExpr
 --                | VarExpr
@@ -123,7 +134,7 @@ minusExpr = do
 --                | MinusExpr
 expression :: Parser Expression
 expression = try constExpr
-         <|> try diffExpr
+         <|> try binOpExpr
          <|> try isZeroExpr
          <|> try ifExpr
          <|> try varExpr
