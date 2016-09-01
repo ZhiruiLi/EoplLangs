@@ -47,12 +47,15 @@ testConstExpr = TestList
 
 testBinOpExpr :: Test
 testBinOpExpr = TestList
-  [ testEq "Parse diff expression (no space)"
+  [ testEq "Parse '-' expression (no space)"
            (BinOpExpr Sub (ConstExpr 3) (ConstExpr 4))
            "-(3,4)"
-  , testEq "Parse diff expression (with spaces)"
+  , testEq "Parse '*' expression (with spaces)"
            (BinOpExpr Mul (ConstExpr 10) (ConstExpr 24))
            "* (  10  ,    24 )"
+  , testEq "Parse binary num-to-bool expression"
+           (BinOpExpr Gt (ConstExpr 1) (ConstExpr 2))
+           "greater?(1, 2)"
   ]
   where testEq = parserEqCase binOpExpr
 
