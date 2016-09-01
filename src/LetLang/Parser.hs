@@ -1,4 +1,4 @@
-module Lang.Parser
+module LetLang.Parser
 ( constExpr
 , binOpExpr
 , isZeroExpr
@@ -11,13 +11,13 @@ module Lang.Parser
 , parseProgram
 ) where
 
-import           Control.Monad          (void)
-import           Data.Maybe             (fromMaybe)
-import           Lang.Data.Expression
-import           Lang.Data.Program
+import           Control.Monad           (void)
+import           Data.Maybe              (fromMaybe)
+import           LetLang.Data.Expression
+import           LetLang.Data.Program
 import           Text.Megaparsec
 import           Text.Megaparsec.Expr
-import qualified Text.Megaparsec.Lexer  as L
+import qualified Text.Megaparsec.Lexer   as L
 import           Text.Megaparsec.String
 
 parseProgram :: String -> Either String Program

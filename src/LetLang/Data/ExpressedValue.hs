@@ -1,4 +1,4 @@
-module Lang.Data.ExpressedValue where
+module LetLang.Data.ExpressedValue where
 
 data ExpressedValue = NumVal Integer | BoolVal Bool
   deriving (Eq)

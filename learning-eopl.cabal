@@ -15,13 +15,11 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lang.Data.Expression
-                     , Lang.Data.Program
-                     , Lang.Data.Environment
-                     , Lang.Data.ExpressedValue
-                     , Lang.Data.DenotedValue
-                     , Lang.Evaluator
-                     , Lang.Parser
+  exposed-modules:     LetLang.Evaluator, LetLang.Parser
+                     , LetLang.Data.Environment
+                     , LetLang.Data.ExpressedValue
+                     , LetLang.Data.Expression
+                     , LetLang.Data.Program
   build-depends:       base 
                      , megaparsec
                      , containers

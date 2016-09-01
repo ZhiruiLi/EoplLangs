@@ -1,15 +1,15 @@
-module Lang.Evaluator
+module LetLang.Evaluator
 ( valueOf
 , run
 , eval
 , evalProgram
 ) where
 
-import           Lang.Data.Environment
-import           Lang.Data.ExpressedValue
-import           Lang.Data.Expression
-import           Lang.Data.Program
-import           Lang.Parser
+import           LetLang.Data.Environment
+import           LetLang.Data.ExpressedValue
+import           LetLang.Data.Expression
+import           LetLang.Data.Program
+import           LetLang.Parser
 
 run :: String -> ExpressedValue
 run input = case parseProgram input of

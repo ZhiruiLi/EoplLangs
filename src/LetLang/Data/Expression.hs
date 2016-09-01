@@ -1,4 +1,4 @@
-module Lang.Data.Expression where
+module LetLang.Data.Expression where
 
 
 data Expression =

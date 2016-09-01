@@ -1,4 +1,4 @@
-module Lang.Data.Environment
+module LetLang.Data.Environment
 ( Environment
 , empty
 , initEnvironment
@@ -8,9 +8,9 @@ module Lang.Data.Environment
 , applySafe
 ) where
 
-import qualified Data.Map                 as M
-import           Data.Maybe               (fromMaybe)
-import           Lang.Data.ExpressedValue
+import qualified Data.Map                    as M
+import           Data.Maybe                  (fromMaybe)
+import           LetLang.Data.ExpressedValue
 
 type Environment = M.Map String ExpressedValue
 

@@ -1,12 +1,12 @@
-module EvaluatorSuite
+module LetLang.EvaluatorSuite
 ( tests
 ) where
 
-import           Data.List                (stripPrefix)
-import           Lang.Data.Environment
-import           Lang.Data.ExpressedValue
-import           Lang.Evaluator
-import           Lang.Parser              (expression)
+import           Data.List                   (stripPrefix)
+import           LetLang.Data.Environment
+import           LetLang.Data.ExpressedValue
+import           LetLang.Evaluator
+import           LetLang.Parser              (expression)
 import           Test.HUnit
 import           Text.Megaparsec
 
