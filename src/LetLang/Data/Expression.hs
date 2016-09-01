@@ -12,6 +12,6 @@ data Expression =
   deriving(Show, Eq)
 
 data Op =
-  Add | Sub | Mul | Div
+  Add | Sub | Mul | Div | Gt | Le | Eq
   deriving(Show, Eq)
 

@@ -44,10 +44,14 @@ keyWord :: String -> Parser ()
 keyWord w = string w *> notFollowedBy alphaNumChar *> spaceConsumer
 
 reservedWords :: [String]
-reservedWords  = ["let", "in", "if", "then", "else", "zero?", "minus"]
+reservedWords  =
+  [ "let", "in", "if", "then", "else", "zero?", "minus", "equal?"
+  , "greater?", "less?" ]
 
 binOpsMap :: [(String, Op)]
-binOpsMap = [("+", Add), ("-", Sub), ("*", Mul), ("/", Div)]
+binOpsMap =
+  [ ("+", Add), ("-", Sub), ("*", Mul), ("/", Div), ("equal?", Eq)
+  , ("greater?", Gt), ("less?", Le) ]
 
 binOp :: Parser Op
 binOp = do

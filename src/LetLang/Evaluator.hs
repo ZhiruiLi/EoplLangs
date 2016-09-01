@@ -56,23 +56,30 @@ valueOf (LetExpr var valExpr expr) env =
 boolOpMap :: [(Op, Bool -> Bool -> Bool)]
 boolOpMap = []
 
-numOpMap :: [(Op, Integer -> Integer -> Integer)]
-numOpMap = [(Add, (+)), (Sub, (-)), (Mul, (*)), (Div, div)]
+numToNumOpMap :: [(Op, Integer -> Integer -> Integer)]
+numToNumOpMap = [(Add, (+)), (Sub, (-)), (Mul, (*)), (Div, div)]
+
+numToBoolOpMap :: [(Op, Integer -> Integer -> Bool)]
+numToBoolOpMap = [(Gt, (>)), (Le, (<)), (Eq, (==))]
 
 evalBinOpExpr op expr1 expr2 env =
   case (wrapVal1, wrapVal2) of
     (msg@(Left _), _) -> msg
     (_, msg@(Left _)) -> msg
     (Right val1, Right val2) ->
-      case lookup op numOpMap of
-        Just func -> case (val1, val2) of
+      case ( lookup op numToNumOpMap
+           , lookup op numToBoolOpMap
+           , lookup op boolOpMap ) of
+        (Just func, _, _) -> case (val1, val2) of
           (NumVal n1, NumVal n2) -> Right . NumVal $ func n1 n2
           (a, b)                 -> numError a b
-        Nothing -> case lookup op boolOpMap of
-          Just func -> case (val1, val2) of
-            (BoolVal b1, BoolVal b2) -> Right . BoolVal $ func b1 b2
-            (a, b)                   -> boolError a b
-          Nothing -> invalidError op
+        (_, Just func, _) -> case (val1, val2) of
+          (NumVal n1, NumVal n2) -> Right . BoolVal $ func n1 n2
+          (a, b)                 -> numError a b
+        (_, _, Just func) -> case (val1, val2) of
+          (BoolVal b1, BoolVal b2) -> Right . BoolVal $ func b1 b2
+          (a, b)                   -> boolError a b
+        _ -> invalidError op
   where
     wrapVal1 = valueOf expr1 env
     wrapVal2 = valueOf expr2 env
