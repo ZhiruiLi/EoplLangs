@@ -24,7 +24,9 @@ extend :: String -> ExpressedValue -> Environment -> Environment
 extend = M.insert
 
 extendMany :: [(String, ExpressedValue)] -> Environment -> Environment
-extendMany list env = M.union env $ M.fromList list
+extendMany = flip (foldl func)
+  where
+    func env (var, val) = extend var val env
 
 apply :: Environment -> String -> ExpressedValue
 apply env var = fromMaybe

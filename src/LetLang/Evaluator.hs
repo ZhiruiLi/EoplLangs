@@ -61,10 +61,8 @@ valueOf (UnaryOpExpr op expr) env =
   evalUnaryOpExpr op expr env
 valueOf (CondExpr pairs) env =
   evalCondExpr pairs env
-valueOf (LetExpr var valExpr expr) env =
-  case valueOf valExpr env of
-    Left msg  -> Left msg
-    Right val -> valueOf expr (extend var val env)
+valueOf (LetExpr bindings body) env =
+  evalLetExpr bindings body env
 
 binBoolOpMap :: [(BinOp, Bool -> Bool -> Bool)]
 binBoolOpMap = []
@@ -175,3 +173,26 @@ evalCondExpr ((e1, e2):pairs) env = case valueOf e1 env of
   Right v -> Left $
     "Predicate expression should be boolean, but got: "
     `mappend` show v
+
+evalLetExpr :: [(String, Expression)] -> Expression -> Environment -> EvaluateResult
+evalLetExpr bindings body env = case evaledBindings of
+  Left msg    -> Left msg
+  Right pairs -> valueOf body $ extendMany pairs env
+  where
+    func :: Either String [(String, ExpressedValue)]
+         -> (String, Expression)
+         -> Either String [(String, ExpressedValue)]
+    func left@(Left _) _ = left
+    func (Right pairs) (var, expr) = case valueOf expr env of
+      Left msg  -> Left msg
+      Right val -> Right $ (var, val):pairs
+    evaledBindings :: Either String [(String, ExpressedValue)]
+    evaledBindings = case foldl func (Right []) bindings of
+      left@(Left _) -> left
+      Right pairs   -> Right $ reverse pairs
+
+evalLetStarExpr :: [(String, Expression)] -> Expression -> Environment -> EvaluateResult
+evalLetStarExpr [] body env = valueOf body env
+evalLetStarExpr ((var, expr):pairs) body env = case valueOf expr env of
+  Left msg  -> Left msg
+  Right val -> evalLetStarExpr pairs body (extend var val env)

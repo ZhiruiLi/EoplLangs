@@ -21,13 +21,12 @@ tests = TestList
   , testEq "Eval binary num-to-bool operator (false case)"
            (BoolVal False) "less?(5,2)"
   , testEq "Eval let"
-           (NumVal 3)
+           (NumVal 1)
            $ unlines
-              [ "let z = 5"
-              , "in let x = 3"
-              , "   in let y = - (x, 1)"
-              , "      in let x = 4"
-              , "         in -(z, -(x,y))"
+              [ "let x = 30"
+              , "in let x = -(x,1)"
+              , "       y = -(x,2)"
+              , "   in -(x,y)"
               ]
   , testCond
   , testEq "Eval minus" (NumVal (-1)) "minus(1)"

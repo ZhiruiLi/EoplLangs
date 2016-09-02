@@ -108,16 +108,22 @@ testVarExpr = TestList
 
 testLetExpr :: Test
 testLetExpr = TestList
-  [ testEq "Parse let expression"
-           (LetExpr "bar" (constNum 1) (VarExpr "bar"))
+  [ testEq "Parse let expression with 0 binding"
+           (LetExpr [] (VarExpr "bar"))
+           "let in bar"
+  , testEq "Parse let expression with 1 binding"
+           (LetExpr [("bar", constNum 1)] (VarExpr "bar"))
            "let bar = 1 in bar"
+  , testEq "Parse let expression with multi bindings"
+           (LetExpr [("x", constNum 1), ("y", constNum 2), ("z", constNum 3)]
+                    (VarExpr "bar"))
+           "let x = 1 y = 2 z = 3 in bar"
   ]
 
 testExpression :: Test
 testExpression = TestList
   [ testEq "Parse complex expression"
-           (LetExpr "bar"
-                    (constNum 1)
+           (LetExpr [("bar", constNum 1)]
                     (CondExpr
                       [ (UnaryOpExpr IsZero (VarExpr "bar"), constNum 3)
                       , (constBool True, VarExpr "zero") ]))
@@ -125,9 +131,8 @@ testExpression = TestList
   , testEq "Parse list expression"
            (UnaryOpExpr
              Car (LetExpr
-                   "foo" (constNum 3) (BinOpExpr Cons
-                                        (constNum 5)
-                                        EmptyListExpr)))
+                   [("foo", constNum 3)]
+                   (BinOpExpr Cons (constNum 5) EmptyListExpr)))
            "car(let foo = 3 in cons(5, emptyList))"
 
   ]
@@ -135,8 +140,7 @@ testExpression = TestList
 testParseProgram :: Test
 testParseProgram = TestList
   [ testEq "Parse program (with spaces)"
-            (Program (LetExpr "x"
-                              (constNum 3)
+            (Program (LetExpr [("x", constNum 3)]
                               (VarExpr "x")))
             "let x = 3 in x"
   ]

@@ -125,13 +125,16 @@ varExpr = VarExpr <$> identifier
 letExpr :: Parser Expression
 letExpr = do
   _ <- keyWord "let"
-  var <- identifier
-  _ <- equal
-  val <- expression
+  bindings <- many binding
   _ <- keyWord "in"
   body <- expression
-  return $ LetExpr var val body
-
+  return $ LetExpr bindings body
+  where
+    binding = try $ do
+      var <- identifier
+      _ <- equal
+      val <- expression
+      return (var, val)
 
 -- | ManyExprs ::= <empty>
 --             ::= Many1Exprs
@@ -160,7 +163,7 @@ condExpr = do
   _ <- keyWord "end"
   return $ CondExpr pairs
   where
-    pair = do
+    pair = try $ do
       expr1 <- expression
       _ <- longArrow
       expr2 <- expression

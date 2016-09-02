@@ -5,7 +5,7 @@ import qualified LetLang.Data.ExpressedValue as V
 data Expression =
     ConstExpr V.ExpressedValue
   | VarExpr String
-  | LetExpr String Expression Expression
+  | LetExpr [(String, Expression)] Expression
   | BinOpExpr BinOp Expression Expression
   | UnaryOpExpr UnaryOp Expression
   | EmptyListExpr
