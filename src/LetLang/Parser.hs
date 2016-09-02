@@ -40,9 +40,9 @@ keyWord w = string w *> notFollowedBy alphaNumChar *> spaceConsumer
 
 reservedWords :: [String]
 reservedWords  =
-  [ "let", "in", "if", "then", "else", "zero?", "minus", "equal?"
-  , "greater?", "less?", "cons", "car", "cdr", "emptyList", "list"
-  , "cond", "end"
+  [ "let*", "let", "in", "if", "then", "else", "zero?", "minus"
+  , "equal?", "greater?", "less?", "cons", "car", "cdr", "emptyList"
+  , "list", "cond", "end"
   ]
 
 binOpsMap :: [(String, BinOp)]
@@ -121,14 +121,24 @@ ifExpr = do
 varExpr :: Parser Expression
 varExpr = VarExpr <$> identifier
 
--- | LetExpr ::= let Identifier = Expression in Expression
+
+-- | letStarExpr ::= let* {Identifier = Expression}* in Expression
+letStarExpr :: Parser Expression
+letStarExpr = letFamilyExpr "let*" LetStarExpr
+
+-- | letExpr ::= let {Identifier = Expression}* in Expression
 letExpr :: Parser Expression
-letExpr = do
-  _ <- keyWord "let"
+letExpr = letFamilyExpr "let" LetExpr
+
+letFamilyExpr :: String
+              ->  ([(String, Expression)] -> Expression -> Expression)
+              -> Parser Expression
+letFamilyExpr letType builder = do
+  _ <- keyWord letType
   bindings <- many binding
   _ <- keyWord "in"
   body <- expression
-  return $ LetExpr bindings body
+  return $ builder bindings body
   where
     binding = try $ do
       var <- identifier
@@ -176,6 +186,7 @@ condExpr = do
 --              ::= IfExpr
 --              ::= CondExpr
 --              ::= VarExpr
+--              ::= LetStarExpr
 --              ::= LetExpr
 --              ::= EmptyListExpr
 --              ::= ListExpr
@@ -186,6 +197,7 @@ expression = try constExpr
          <|> try ifExpr
          <|> try condExpr
          <|> try varExpr
+         <|> try letStarExpr
          <|> try letExpr
          <|> try emptyListExpr
          <|> try listExpr

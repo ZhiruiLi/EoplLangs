@@ -118,6 +118,19 @@ testLetExpr = TestList
            (LetExpr [("x", constNum 1), ("y", constNum 2), ("z", constNum 3)]
                     (VarExpr "bar"))
            "let x = 1 y = 2 z = 3 in bar"
+  , testEq "Parse let* expression with 1 binding"
+           (LetStarExpr [("x", constNum 1)]
+                        (VarExpr "bar"))
+           "let* x = 1 in bar"
+  , testEq "Parse nested let and let*"
+           (LetExpr
+             [("x", constNum 30)]
+             (LetStarExpr
+               [ ("x", BinOpExpr Sub (VarExpr "x") (constNum 1))
+               , ("y", BinOpExpr Sub (VarExpr "x") (constNum 2))
+               ]
+               (BinOpExpr Sub (VarExpr "x") (VarExpr "y"))))
+          "let x = 30 in let* x = -(x,1) y = -(x,2) in -(x,y)"
   ]
 
 testExpression :: Test

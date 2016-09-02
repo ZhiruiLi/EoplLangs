@@ -6,6 +6,7 @@ data Expression =
     ConstExpr V.ExpressedValue
   | VarExpr String
   | LetExpr [(String, Expression)] Expression
+  | LetStarExpr [(String, Expression)] Expression
   | BinOpExpr BinOp Expression Expression
   | UnaryOpExpr UnaryOp Expression
   | EmptyListExpr
