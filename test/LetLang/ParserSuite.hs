@@ -147,7 +147,6 @@ testExpression = TestList
                    [("foo", constNum 3)]
                    (BinOpExpr Cons (constNum 5) EmptyListExpr)))
            "car(let foo = 3 in cons(5, emptyList))"
-
   ]
 
 testParseProgram :: Test
