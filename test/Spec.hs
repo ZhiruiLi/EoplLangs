@@ -1,4 +1,4 @@
-import qualified LetLang.Suites as Let
+import qualified Let.Suites as Let
 import           Test.HUnit
 
 main :: IO ()

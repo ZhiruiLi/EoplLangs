@@ -1,4 +1,4 @@
-module LetLang.Data.Environment
+module Let.Data.Environment
 ( Environment
 , empty
 , initEnvironment
@@ -10,7 +10,7 @@ module LetLang.Data.Environment
 
 import qualified Data.Map                    as M
 import           Data.Maybe                  (fromMaybe)
-import           LetLang.Data.ExpressedValue
+import           Let.Data.ExpressedValue
 
 type Environment = M.Map String ExpressedValue
 

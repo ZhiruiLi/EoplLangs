@@ -1,4 +1,4 @@
-module LetLang.Data.DenotedValue where
+module Let.Data.DenotedValue where
 
 data DenotedValue = NumVal Integer | BoolVal Bool
   deriving (Eq)
