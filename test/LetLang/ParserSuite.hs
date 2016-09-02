@@ -55,14 +55,22 @@ testBinOpExpr = TestList
   , testEq "Parse binary num-to-bool expression"
            (BinOpExpr Gt (ConstExpr 1) (ConstExpr 2))
            "greater?(1, 2)"
+  , testEq "Parse cons expression"
+           (BinOpExpr Cons (ConstExpr 3) EmptyListExpr)
+           "cons (3, emptyList)"
   ]
   where testEq = parserEqCase binOpExpr
 
 testUnaryOpExpr :: Test
 testUnaryOpExpr = TestList
-  [ testEq "Parse isZero expression (no space)" (UnaryOpExpr IsZero (ConstExpr 1)) "zero?(1)"
-  , testEq "Parse isZero expression (with space)" (UnaryOpExpr IsZero (ConstExpr 3)) "zero? ( 3  )"
-  , testEq "Parse minus expression" (UnaryOpExpr Minus (ConstExpr 1)) "minus(1)"
+  [ testEq "Parse isZero expression (no space)"
+           (UnaryOpExpr IsZero (ConstExpr 1)) "zero?(1)"
+  , testEq "Parse isZero expression (with space)"
+           (UnaryOpExpr IsZero (ConstExpr 3)) "zero? ( 3  )"
+  , testEq "Parse minus expression"
+           (UnaryOpExpr Minus (ConstExpr 1)) "minus(1)"
+  , testEq "Parse car expression"
+           (UnaryOpExpr Car EmptyListExpr) "car (emptyList)"
   ]
   where testEq = parserEqCase unaryOpExpr
 
@@ -102,6 +110,14 @@ testExpression = TestList
                             (ConstExpr 3)
                             (VarExpr "zero")))
            "let bar = 1 in if zero? (bar) then 3 else zero"
+  , testEq "Parse list expression"
+           (UnaryOpExpr
+             Car (LetExpr
+                   "foo" (ConstExpr 3) (BinOpExpr Cons
+                                         (ConstExpr 5)
+                                         EmptyListExpr)))
+           "car(let foo = 3 in cons(5, emptyList))"
+
   ]
   where
     testEq = parserEqCase expression

@@ -36,6 +36,16 @@ tests = TestList
            (NumVal 4)
            "if zero? (5) then 3 else 4"
   , testEq "Eval minus" (NumVal (-1)) "minus(1)"
+  , testList
+  ]
+
+testList :: Test
+testList = TestList
+  [ testEq "Eval empty list" (ListVal Empty) "emptyList"
+  , testError "'car' should fail on empty list"  "car(emptyList)"
+  , testError "'cdr' should fail on empty list"  "cdr(emptyList)"
+  , testEq "'car' should get the head value of list" (NumVal 1) "car(cons(1, emptyList))"
+  , testEq "'cdr' should get the tail list of list" (ListVal Empty) "cdr(cons(1, emptyList))"
   ]
 
 initEnv :: Environment
@@ -48,6 +58,17 @@ testEq msg expect input = TestCase $
     evalRes = case runParser expression "Test equal case" input of
       Right pRes  -> valueOf pRes initEnv
       Left pError -> Left $ show pError
+
+testError :: String -> String -> Test
+testError msg input = TestCase $
+  assertBool msg evalRes
+  where
+    evalRes = case runParser expression "Test equal case" input of
+      Right pRes  -> case valueOf pRes initEnv of
+                       Left _  -> True
+                       Right _ -> False
+      Left _ -> False
+
 
 testNoBound :: String -> String -> Test
 testNoBound msg input = TestCase $

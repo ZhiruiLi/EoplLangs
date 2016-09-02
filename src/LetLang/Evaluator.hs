@@ -33,21 +33,24 @@ valueOf (BinOpExpr Cons expr1 expr2) env =
     (_, msg@(Left _)) -> msg
     (Right v, Right (ListVal lst)) -> Right $ ListVal (NonEmpty v lst)
     (_, Right v) -> Left $
-      "Tail of a list should be list, but got: " `mappend` show v
+      "The second operand of '" `mappend` show Cons `mappend`
+      "' should be list, but got: " `mappend` show v
 valueOf (UnaryOpExpr Car expr) env =
   case valueOf expr env of
     msg@(Left _) -> msg
     Right (ListVal Empty) -> Left "Could not apply 'car' on empty list"
     Right (ListVal (NonEmpty v _)) -> Right v
     Right v -> Left $
-      "Operand of 'car' should be list, but got: " `mappend` show v
+      "Operand of '" `mappend` show Car `mappend`
+      "' should be list, but got: " `mappend` show v
 valueOf (UnaryOpExpr Cdr expr) env =
   case valueOf expr env of
     msg@(Left _) -> msg
     Right (ListVal Empty) -> Left "Could not apply 'cdr' on empty list"
     Right (ListVal (NonEmpty _ v)) -> Right $ ListVal v
     Right v -> Left $
-      "Operand of 'cdr' should be list, but got: " `mappend` show v
+      "Operand of '" `mappend` show Cdr `mappend`
+      "' should be list, but got: " `mappend` show v
 -- end operate on list
 valueOf (BinOpExpr op expr1 expr2) env =
   evalBinOpExpr op expr1 expr2 env
@@ -82,7 +85,6 @@ unaryNumToNumOpMap = [(Minus, negate)]
 
 unaryNumToBoolOpMap :: [(UnaryOp, Integer -> Bool)]
 unaryNumToBoolOpMap = [(IsZero, (0 ==))]
-
 
 evalBinOpExpr :: BinOp
               -> Expression
