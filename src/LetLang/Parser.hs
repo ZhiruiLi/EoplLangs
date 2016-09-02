@@ -1,4 +1,4 @@
-module Let.Parser
+module LetLang.Parser
 ( expression
 , program
 , parseProgram
@@ -6,9 +6,9 @@ module Let.Parser
 
 import           Control.Monad               (void)
 import           Data.Maybe                  (fromMaybe)
-import           Let.Data.ExpressedValue
-import           Let.Data.Expression
-import           Let.Data.Program
+import           LetLang.Data.ExpressedValue
+import           LetLang.Data.Expression
+import           LetLang.Data.Program
 import           Text.Megaparsec
 import           Text.Megaparsec.Expr
 import qualified Text.Megaparsec.Lexer       as L

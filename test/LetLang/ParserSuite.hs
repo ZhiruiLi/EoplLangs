@@ -1,11 +1,11 @@
-module Let.ParserSuite
+module LetLang.ParserSuite
 ( tests
 ) where
 
-import           Let.Data.ExpressedValue
-import           Let.Data.Expression
-import           Let.Data.Program
-import           Let.Parser
+import           LetLang.Data.ExpressedValue
+import           LetLang.Data.Expression
+import           LetLang.Data.Program
+import           LetLang.Parser
 import           Test.HUnit.Base
 import           Text.Megaparsec
 import           Text.Megaparsec.String

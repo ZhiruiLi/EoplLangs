@@ -4,17 +4,17 @@ module Repl
 ) where
 
 import           Data.Maybe        (fromMaybe)
-import qualified Let.Evaluator as Let
+import qualified LetLang.Evaluator as Let
 import           System.IO
 
 data Runnable = forall a b. (Show a) => Runnable (String -> Either String a)
 
-defaultLang = "Let"
+defaultLang = "LetLang"
 
 supportedLangs :: [(String, Runnable)]
 supportedLangs = fmap
   (\p -> (fst p, Runnable (snd p)))
-  [ ("Let", Let.run)
+  [ ("LetLang", Let.run)
   ]
 
 flushStr :: String -> IO ()

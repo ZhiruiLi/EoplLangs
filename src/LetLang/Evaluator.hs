@@ -1,15 +1,15 @@
-module Let.Evaluator
+module LetLang.Evaluator
 ( valueOf
 , run
 , eval
 , evalProgram
 ) where
 
-import           Let.Data.Environment
-import           Let.Data.ExpressedValue
-import           Let.Data.Expression
-import           Let.Data.Program
-import           Let.Parser
+import           LetLang.Data.Environment
+import           LetLang.Data.ExpressedValue
+import           LetLang.Data.Expression
+import           LetLang.Data.Program
+import           LetLang.Parser
 
 type EvaluateResult = Either String ExpressedValue
 

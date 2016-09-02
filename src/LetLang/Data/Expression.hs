@@ -1,6 +1,6 @@
-module Let.Data.Expression where
+module LetLang.Data.Expression where
 
-import qualified Let.Data.ExpressedValue as V
+import qualified LetLang.Data.ExpressedValue as V
 
 data Expression =
     ConstExpr V.ExpressedValue
