@@ -55,14 +55,11 @@ valueOf (UnaryOpExpr Cdr expr) env =
       "' should be list, but got: " `mappend` show v
 valueOf (ListExpr es) env = buildList es env
 -- end operate on list
-valueOf (BinOpExpr op expr1 expr2) env =
-  evalBinOpExpr op expr1 expr2 env
-valueOf (UnaryOpExpr op expr) env =
-  evalUnaryOpExpr op expr env
-valueOf (CondExpr pairs) env =
-  evalCondExpr pairs env
-valueOf (LetExpr bindings body) env =
-  evalLetExpr bindings body env
+valueOf (BinOpExpr op expr1 expr2) env = evalBinOpExpr op expr1 expr2 env
+valueOf (UnaryOpExpr op expr) env = evalUnaryOpExpr op expr env
+valueOf (CondExpr pairs) env = evalCondExpr pairs env
+valueOf (LetExpr bindings body) env = evalLetExpr bindings body env
+valueOf (LetStarExpr bindings body) env = evalLetStarExpr bindings body env
 
 binBoolOpMap :: [(BinOp, Bool -> Bool -> Bool)]
 binBoolOpMap = []
