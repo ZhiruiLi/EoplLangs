@@ -1,11 +1,5 @@
 module LetLang.Parser
-( constExpr
-, binOpExpr
-, unaryOpExpr
-, ifExpr
-, varExpr
-, letExpr
-, expression
+( expression
 , program
 , parseProgram
 ) where
@@ -45,7 +39,7 @@ keyWord w = string w *> notFollowedBy alphaNumChar *> spaceConsumer
 reservedWords :: [String]
 reservedWords  =
   [ "let", "in", "if", "then", "else", "zero?", "minus", "equal?"
-  , "greater?", "less?", "cons", "car", "cdr", "emptyList"
+  , "greater?", "less?", "cons", "car", "cdr", "emptyList", "list"
   ]
 
 binOpsMap :: [(String, BinOp)]
@@ -135,16 +129,36 @@ letExpr = do
   body <- expression
   return $ LetExpr var val body
 
+
+-- | ManyExprs ::= <empty>
+--             ::= Many1Exprs
+manyExprs :: Parser [Expression]
+manyExprs = sepBy expression comma
+
+-- | Many1Exprs ::= Expression
+--              ::= Expression , Many1Exprs
+many1Exprs :: Parser [Expression]
+many1Exprs = sepBy1 expression comma
+
+-- | ListExpr ::= list (ListItems)
+listExpr :: Parser Expression
+listExpr = do
+  _ <- keyWord "list"
+  ListExpr <$> parens manyExprs
+
+
 -- | EmptyListExpr ::= emptyList
 emptyListExpr :: Parser Expression
 emptyListExpr = keyWord "emptyList" >> return EmptyListExpr
 
 -- | Expression ::= ConstExpr
---                | BinOpExpr
---                | UnaryOpExpr
---                | IfExpr
---                | VarExpr
---                | LetExpr
+--              ::= BinOpExpr
+--              ::= UnaryOpExpr
+--              ::= IfExpr
+--              ::= VarExpr
+--              ::= LetExpr
+--              ::= EmptyListExpr
+--              ::= ListExpr
 expression :: Parser Expression
 expression = try constExpr
          <|> try binOpExpr
@@ -153,6 +167,7 @@ expression = try constExpr
          <|> try varExpr
          <|> try letExpr
          <|> try emptyListExpr
+         <|> try listExpr
 
 program :: Parser Program
 program = do

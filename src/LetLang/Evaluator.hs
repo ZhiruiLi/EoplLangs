@@ -11,46 +11,49 @@ import           LetLang.Data.Expression
 import           LetLang.Data.Program
 import           LetLang.Parser
 
-run :: String -> Either String ExpressedValue
+type EvaluateResult = Either String ExpressedValue
+
+run :: String -> EvaluateResult
 run input = parseProgram input >>= evalProgram
 
-eval :: Expression -> Either String ExpressedValue
+eval :: Expression -> EvaluateResult
 eval = flip valueOf empty
 
-evalProgram :: Program -> Either String ExpressedValue
+evalProgram :: Program -> EvaluateResult
 evalProgram (Program expr) = eval expr
 
-valueOf :: Expression -> Environment -> Either String ExpressedValue
+valueOf :: Expression -> Environment -> EvaluateResult
 valueOf (ConstExpr n) _   = Right $ NumVal n
 valueOf (VarExpr var) env = case applySafe env var of
   Nothing  -> Left $ "Not in scope: " `mappend` var
   Just val -> Right val
 -- begin operate on list
-valueOf EmptyListExpr _ = Right $ ListVal Empty
+valueOf EmptyListExpr _ = Right $ ListVal []
 valueOf (BinOpExpr Cons expr1 expr2) env =
   case (valueOf expr1 env, valueOf expr2 env) of
     (msg@(Left _), _) -> msg
     (_, msg@(Left _)) -> msg
-    (Right v, Right (ListVal lst)) -> Right $ ListVal (NonEmpty v lst)
+    (Right v, Right (ListVal lst)) -> Right $ ListVal (v:lst)
     (_, Right v) -> Left $
       "The second operand of '" `mappend` show Cons `mappend`
       "' should be list, but got: " `mappend` show v
 valueOf (UnaryOpExpr Car expr) env =
   case valueOf expr env of
     msg@(Left _) -> msg
-    Right (ListVal Empty) -> Left "Could not apply 'car' on empty list"
-    Right (ListVal (NonEmpty v _)) -> Right v
+    Right (ListVal []) -> Left "Could not apply 'car' on empty list"
+    Right (ListVal (v:_)) -> Right v
     Right v -> Left $
       "Operand of '" `mappend` show Car `mappend`
       "' should be list, but got: " `mappend` show v
 valueOf (UnaryOpExpr Cdr expr) env =
   case valueOf expr env of
     msg@(Left _) -> msg
-    Right (ListVal Empty) -> Left "Could not apply 'cdr' on empty list"
-    Right (ListVal (NonEmpty _ v)) -> Right $ ListVal v
+    Right (ListVal []) -> Left "Could not apply 'cdr' on empty list"
+    Right (ListVal (_:t)) -> Right $ ListVal t
     Right v -> Left $
       "Operand of '" `mappend` show Cdr `mappend`
       "' should be list, but got: " `mappend` show v
+valueOf (ListExpr es) env = buildList es env
 -- end operate on list
 valueOf (BinOpExpr op expr1 expr2) env =
   evalBinOpExpr op expr1 expr2 env
@@ -90,7 +93,7 @@ evalBinOpExpr :: BinOp
               -> Expression
               -> Expression
               -> Environment
-              -> Either String ExpressedValue
+              -> EvaluateResult
 evalBinOpExpr op expr1 expr2 env =
   case (wrapVal1, wrapVal2) of
     (msg@(Left _), _) -> msg
@@ -124,7 +127,7 @@ invalidOpError op = error $ "Invalid operator: " `mappend` show op
 evalUnaryOpExpr :: UnaryOp
                 -> Expression
                 -> Environment
-                -> Either String ExpressedValue
+                -> EvaluateResult
 evalUnaryOpExpr op expr env =
   case valueOf expr env of
     msg@(Left _) -> msg
@@ -149,3 +152,20 @@ evalUnaryOpExpr op expr env =
       , "should be ", typeName, ", but got: "
       , show val
       ]
+
+buildList :: [Expression] -> Environment -> EvaluateResult
+buildList es env = case collect of
+  Left msg   -> Left msg
+  Right ress -> Right . ListVal $ reverse ress
+  where
+    collector :: Either String [ExpressedValue]
+              -> EvaluateResult
+              -> Either String [ExpressedValue]
+    collector acc res = case (acc, res) of
+      (Left msg, _)            -> Left msg
+      (_, Left msg)            -> Left msg
+      (Right vAcc, Right vRes) -> Right $ vRes:vAcc
+    results :: [EvaluateResult]
+    results = flip valueOf env <$> es
+    collect :: Either String [ExpressedValue]
+    collect = foldl collector (Right []) results

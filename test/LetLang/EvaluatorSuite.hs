@@ -41,11 +41,21 @@ tests = TestList
 
 testList :: Test
 testList = TestList
-  [ testEq "Eval empty list" (ListVal Empty) "emptyList"
-  , testError "'car' should fail on empty list"  "car(emptyList)"
-  , testError "'cdr' should fail on empty list"  "cdr(emptyList)"
-  , testEq "'car' should get the head value of list" (NumVal 1) "car(cons(1, emptyList))"
-  , testEq "'cdr' should get the tail list of list" (ListVal Empty) "cdr(cons(1, emptyList))"
+  [ testEq "Eval empty list" (ListVal []) "emptyList"
+  , testError "'car' should fail on empty list" "car(emptyList)"
+  , testError "'cdr' should fail on empty list" "cdr(emptyList)"
+  , testEq "'car' should get the head value of list"
+           (NumVal 1) "car(cons(1, emptyList))"
+  , testEq "'cdr' should get the tail list of list"
+           (ListVal []) "cdr(cons(1, emptyList))"
+  , testEq "'list(...)' should construct a list (include nested)"
+           (ListVal [ NumVal 1
+                    , ListVal [ NumVal 2, NumVal 3 ]
+                    , NumVal 4
+                    ])
+           "list (1, list(2, 3), 4)"
+  , testEq "'list()' should construct a empty list"
+           (ListVal []) "list ()"
   ]
 
 initEnv :: Environment

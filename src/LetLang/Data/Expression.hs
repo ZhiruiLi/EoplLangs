@@ -9,6 +9,7 @@ data Expression =
   | BinOpExpr BinOp Expression Expression
   | UnaryOpExpr UnaryOp Expression
   | EmptyListExpr
+  | ListExpr [Expression]
   deriving(Show, Eq)
 
 data BinOp =

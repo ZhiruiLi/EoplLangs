@@ -34,15 +34,18 @@ parserFailCase parser msg input =
     isLeft (Right _) = False
     runP = runParser parser "Test fail case" input
 
+testEq :: String -> Expression -> String -> Test
+testEq = parserEqCase expression
+
+testFail :: String -> String -> Test
+testFail = parserFailCase expression
+
 testConstExpr :: Test
 testConstExpr = TestList
   [ testEq "Parse single number" (ConstExpr 5) "5"
   , testEq "Parse multi-numbers" (ConstExpr 123) "123"
   , testFail "Parse negative numbers should fail" "-3"
   ]
-  where
-    testEq = parserEqCase constExpr
-    testFail = parserFailCase constExpr
 
 testBinOpExpr :: Test
 testBinOpExpr = TestList
@@ -59,7 +62,6 @@ testBinOpExpr = TestList
            (BinOpExpr Cons (ConstExpr 3) EmptyListExpr)
            "cons (3, emptyList)"
   ]
-  where testEq = parserEqCase binOpExpr
 
 testUnaryOpExpr :: Test
 testUnaryOpExpr = TestList
@@ -72,7 +74,6 @@ testUnaryOpExpr = TestList
   , testEq "Parse car expression"
            (UnaryOpExpr Car EmptyListExpr) "car (emptyList)"
   ]
-  where testEq = parserEqCase unaryOpExpr
 
 testIfExpr :: Test
 testIfExpr = TestList
@@ -80,16 +81,12 @@ testIfExpr = TestList
            (IfExpr (UnaryOpExpr IsZero (ConstExpr 3)) (ConstExpr 4) (ConstExpr 5))
            "if zero?(3) then 4 else 5"
   ]
-  where testEq = parserEqCase ifExpr
 
 testVarExpr :: Test
 testVarExpr = TestList
   [ testEq "Parse var expression" (VarExpr "foo") "foo"
   , testFail "Parse reserved word should fail" "then"
   ]
-  where
-    testEq = parserEqCase varExpr
-    testFail = parserFailCase varExpr
 
 testLetExpr :: Test
 testLetExpr = TestList
@@ -97,13 +94,10 @@ testLetExpr = TestList
            (LetExpr "bar" (ConstExpr 1) (VarExpr "bar"))
            "let bar = 1 in bar"
   ]
-  where testEq = parserEqCase letExpr
 
 testExpression :: Test
 testExpression = TestList
-  [ testFail "Parse negative numbers should fail" "-3"
-  , testFail "Parse reserved word should fail" "then"
-  , testEq "Parse complex expression"
+  [ testEq "Parse complex expression"
            (LetExpr "bar"
                     (ConstExpr 1)
                     (IfExpr (UnaryOpExpr IsZero (VarExpr "bar"))
@@ -119,9 +113,6 @@ testExpression = TestList
            "car(let foo = 3 in cons(5, emptyList))"
 
   ]
-  where
-    testEq = parserEqCase expression
-    testFail = parserFailCase expression
 
 testParseProgram :: Test
 testParseProgram = TestList
