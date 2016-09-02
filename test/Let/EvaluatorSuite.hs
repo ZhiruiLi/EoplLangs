@@ -20,31 +20,19 @@ tests = TestList
            (BoolVal True) "greater?(4, 3)"
   , testEq "Eval binary num-to-bool operator (false case)"
            (BoolVal False) "less?(5,2)"
-
-  , testLet
+  , testEq "Eval let"
+           (NumVal 1)
+           $ unlines
+              [ "let x = 30"
+              , "in let x = -(x,1)"
+              , "       y = -(x,2)"
+              , "   in -(x,y)"
+              ]
   , testCond
   , testEq "Eval minus" (NumVal (-1)) "minus(1)"
   , testList
   ]
 
-testLet :: Test
-testLet = TestList
-  [ testEq "Eval let"
-           (NumVal 1)
-           $ unlines
-             [ "let x = 30"
-             , "in let x = -(x,1)"
-             , "       y = -(x,2)"
-             , "   in -(x,y)"
-             ]
-  , testEq "Eval let*"
-           (NumVal 2)
-           $ unlines
-             [ "let x = 30"
-             , "in let* x = -(x,1) y = -(x,2)"
-             , "   in -(x,y)"
-             ]
-  ]
 testCond :: Test
 testCond = TestList
   [ testEq "Eval true branch of if expression"
