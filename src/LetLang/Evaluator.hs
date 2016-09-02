@@ -23,7 +23,7 @@ evalProgram :: Program -> EvaluateResult
 evalProgram (Program expr) = eval expr
 
 valueOf :: Expression -> Environment -> EvaluateResult
-valueOf (ConstExpr n) _   = Right $ NumVal n
+valueOf (ConstExpr x) _   = Right x
 valueOf (VarExpr var) env = case applySafe env var of
   Nothing  -> Left $ "Not in scope: " `mappend` var
   Just val -> Right val
@@ -59,13 +59,8 @@ valueOf (BinOpExpr op expr1 expr2) env =
   evalBinOpExpr op expr1 expr2 env
 valueOf (UnaryOpExpr op expr) env =
   evalUnaryOpExpr op expr env
-valueOf (IfExpr expr1 expr2 expr3) env =
-  case valueOf expr1 env of
-    Right (BoolVal b) -> valueOf (if b then expr2 else expr3) env
-    Right x -> Left $
-        "Predicate of if-expression should be boolean, but got: " `mappend`
-        show x
-    left -> left
+valueOf (CondExpr pairs) env =
+  evalCondExpr pairs env
 valueOf (LetExpr var valExpr expr) env =
   case valueOf valExpr env of
     Left msg  -> Left msg
@@ -169,3 +164,14 @@ buildList es env = case collect of
     results = flip valueOf env <$> es
     collect :: Either String [ExpressedValue]
     collect = foldl collector (Right []) results
+
+
+evalCondExpr :: [(Expression, Expression)] -> Environment -> EvaluateResult
+evalCondExpr [] _ = Left "No predicate is true"
+evalCondExpr ((e1, e2):pairs) env = case valueOf e1 env of
+  Left msg -> Left msg
+  Right (BoolVal True) -> valueOf e2 env
+  Right (BoolVal False) -> evalCondExpr pairs env
+  Right v -> Left $
+    "Predicate expression should be boolean, but got: "
+    `mappend` show v

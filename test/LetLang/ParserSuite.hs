@@ -2,6 +2,7 @@ module LetLang.ParserSuite
 ( tests
 ) where
 
+import           LetLang.Data.ExpressedValue
 import           LetLang.Data.Expression
 import           LetLang.Data.Program
 import           LetLang.Parser
@@ -14,12 +15,15 @@ tests = TestList
   [ TestLabel "Test const expression" testConstExpr
   , TestLabel "Test binary-operator expression" testBinOpExpr
   , TestLabel "Test unary-operator expression" testUnaryOpExpr
-  , TestLabel "Test if expression" testIfExpr
+  , TestLabel "Test condition expression" testCondExpr
   , TestLabel "Test var expression" testVarExpr
   , TestLabel "Test let expression" testLetExpr
   , TestLabel "Test expression" testExpression
   , TestLabel "Test parse program" testParseProgram
   ]
+
+constNum = ConstExpr . NumVal
+constBool = ConstExpr . BoolVal
 
 parserEqCase :: (Eq a, Show a) => Parser a -> String -> a -> String -> Test
 parserEqCase parser msg expect input =
@@ -42,44 +46,58 @@ testFail = parserFailCase expression
 
 testConstExpr :: Test
 testConstExpr = TestList
-  [ testEq "Parse single number" (ConstExpr 5) "5"
-  , testEq "Parse multi-numbers" (ConstExpr 123) "123"
+  [ testEq "Parse single number" (constNum 5) "5"
+  , testEq "Parse multi-numbers" (constNum 123) "123"
   , testFail "Parse negative numbers should fail" "-3"
   ]
 
 testBinOpExpr :: Test
 testBinOpExpr = TestList
   [ testEq "Parse '-' expression (no space)"
-           (BinOpExpr Sub (ConstExpr 3) (ConstExpr 4))
+           (BinOpExpr Sub (constNum 3) (constNum 4))
            "-(3,4)"
   , testEq "Parse '*' expression (with spaces)"
-           (BinOpExpr Mul (ConstExpr 10) (ConstExpr 24))
+           (BinOpExpr Mul (constNum 10) (constNum 24))
            "* (  10  ,    24 )"
   , testEq "Parse binary num-to-bool expression"
-           (BinOpExpr Gt (ConstExpr 1) (ConstExpr 2))
+           (BinOpExpr Gt (constNum 1) (constNum 2))
            "greater?(1, 2)"
   , testEq "Parse cons expression"
-           (BinOpExpr Cons (ConstExpr 3) EmptyListExpr)
+           (BinOpExpr Cons (constNum 3) EmptyListExpr)
            "cons (3, emptyList)"
   ]
 
 testUnaryOpExpr :: Test
 testUnaryOpExpr = TestList
   [ testEq "Parse isZero expression (no space)"
-           (UnaryOpExpr IsZero (ConstExpr 1)) "zero?(1)"
+           (UnaryOpExpr IsZero (constNum 1)) "zero?(1)"
   , testEq "Parse isZero expression (with space)"
-           (UnaryOpExpr IsZero (ConstExpr 3)) "zero? ( 3  )"
+           (UnaryOpExpr IsZero (constNum 3)) "zero? ( 3  )"
   , testEq "Parse minus expression"
-           (UnaryOpExpr Minus (ConstExpr 1)) "minus(1)"
+           (UnaryOpExpr Minus (constNum 1)) "minus(1)"
   , testEq "Parse car expression"
            (UnaryOpExpr Car EmptyListExpr) "car (emptyList)"
   ]
 
-testIfExpr :: Test
-testIfExpr = TestList
+testCondExpr :: Test
+testCondExpr = TestList
   [ testEq "Parse if expression"
-           (IfExpr (UnaryOpExpr IsZero (ConstExpr 3)) (ConstExpr 4) (ConstExpr 5))
+           (CondExpr
+             [ (UnaryOpExpr IsZero (constNum 3), constNum 4)
+             , (constBool True, constNum 5) ])
            "if zero?(3) then 4 else 5"
+  , testEq "Parse cond expression"
+           (CondExpr
+             [ (UnaryOpExpr IsZero (constNum 3), constNum 4)
+             , (BinOpExpr Gt (constNum 3) (constNum 5), constNum 4)
+             , (UnaryOpExpr IsZero (constNum 0), constNum 4)
+             ])
+           $ unlines
+             [ "cond zero?(3) ==> 4\n"
+             , "     greater?(3, 5) ==> 4\n"
+             , "     zero?(0) ==> 4\n"
+             , "end"
+             ]
   ]
 
 testVarExpr :: Test
@@ -91,7 +109,7 @@ testVarExpr = TestList
 testLetExpr :: Test
 testLetExpr = TestList
   [ testEq "Parse let expression"
-           (LetExpr "bar" (ConstExpr 1) (VarExpr "bar"))
+           (LetExpr "bar" (constNum 1) (VarExpr "bar"))
            "let bar = 1 in bar"
   ]
 
@@ -99,17 +117,17 @@ testExpression :: Test
 testExpression = TestList
   [ testEq "Parse complex expression"
            (LetExpr "bar"
-                    (ConstExpr 1)
-                    (IfExpr (UnaryOpExpr IsZero (VarExpr "bar"))
-                            (ConstExpr 3)
-                            (VarExpr "zero")))
+                    (constNum 1)
+                    (CondExpr
+                      [ (UnaryOpExpr IsZero (VarExpr "bar"), constNum 3)
+                      , (constBool True, VarExpr "zero") ]))
            "let bar = 1 in if zero? (bar) then 3 else zero"
   , testEq "Parse list expression"
            (UnaryOpExpr
              Car (LetExpr
-                   "foo" (ConstExpr 3) (BinOpExpr Cons
-                                         (ConstExpr 5)
-                                         EmptyListExpr)))
+                   "foo" (constNum 3) (BinOpExpr Cons
+                                        (constNum 5)
+                                        EmptyListExpr)))
            "car(let foo = 3 in cons(5, emptyList))"
 
   ]
@@ -118,7 +136,7 @@ testParseProgram :: Test
 testParseProgram = TestList
   [ testEq "Parse program (with spaces)"
             (Program (LetExpr "x"
-                              (ConstExpr 3)
+                              (constNum 3)
                               (VarExpr "x")))
             "let x = 3 in x"
   ]

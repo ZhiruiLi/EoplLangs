@@ -29,14 +29,28 @@ tests = TestList
               , "      in let x = 4"
               , "         in -(z, -(x,y))"
               ]
-  , testEq "Eval true branch of if expression"
+  , testCond
+  , testEq "Eval minus" (NumVal (-1)) "minus(1)"
+  , testList
+  ]
+
+testCond :: Test
+testCond = TestList
+  [ testEq "Eval true branch of if expression"
            (NumVal 3)
            "if zero? (0) then 3 else 4"
   , testEq "Eval false branch of if expression"
            (NumVal 4)
            "if zero? (5) then 3 else 4"
-  , testEq "Eval minus" (NumVal (-1)) "minus(1)"
-  , testList
+  , testError "Empty condition expression should fail" "cond end"
+  , testError "A condition expression with no true predicate should fail"
+              "cond zero?(5) ==> 3 greater?(5, 10) ==> 4 end"
+  , testEq "Match first condition"
+           (NumVal 1)
+           "cond zero?(0) ==> 1 zero?(0) ==> 2 zero?(0) ==> 3 end"
+  , testEq "Match third condition"
+           (NumVal 3)
+           "cond zero?(1) ==> 1 zero?(2) ==> 2 zero?(0) ==> 3 end"
   ]
 
 testList :: Test

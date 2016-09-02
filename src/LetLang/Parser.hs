@@ -4,13 +4,14 @@ module LetLang.Parser
 , parseProgram
 ) where
 
-import           Control.Monad           (void)
-import           Data.Maybe              (fromMaybe)
+import           Control.Monad               (void)
+import           Data.Maybe                  (fromMaybe)
+import           LetLang.Data.ExpressedValue
 import           LetLang.Data.Expression
 import           LetLang.Data.Program
 import           Text.Megaparsec
 import           Text.Megaparsec.Expr
-import qualified Text.Megaparsec.Lexer   as L
+import qualified Text.Megaparsec.Lexer       as L
 import           Text.Megaparsec.String
 
 parseProgram :: String -> Either String Program
@@ -29,6 +30,7 @@ parens = between (symbol "(") (symbol ")")
 minus = symbol "-"
 equal = symbol "="
 comma = symbol ","
+longArrow = symbol "==>"
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme spaceConsumer
@@ -40,6 +42,7 @@ reservedWords :: [String]
 reservedWords  =
   [ "let", "in", "if", "then", "else", "zero?", "minus", "equal?"
   , "greater?", "less?", "cons", "car", "cdr", "emptyList", "list"
+  , "cond", "end"
   ]
 
 binOpsMap :: [(String, BinOp)]
@@ -87,7 +90,7 @@ expressionPair = parens $ do
 
 -- | ConstExpr ::= Number
 constExpr :: Parser Expression
-constExpr = ConstExpr <$> integer
+constExpr = ConstExpr . NumVal <$> integer
 
 -- | BinOpExpr ::= BinOp (Expression, Expression)
 binOpExpr :: Parser Expression
@@ -112,7 +115,7 @@ ifExpr = do
   thenE <- expression
   _ <- keyWord "else"
   elseE <- expression
-  return $ IfExpr ifE thenE elseE
+  return $ CondExpr [(ifE, thenE), (ConstExpr (BoolVal True), elseE)]
 
 -- | VarExpr ::= Identifier
 varExpr :: Parser Expression
@@ -146,15 +149,29 @@ listExpr = do
   _ <- keyWord "list"
   ListExpr <$> parens manyExprs
 
-
 -- | EmptyListExpr ::= emptyList
 emptyListExpr :: Parser Expression
 emptyListExpr = keyWord "emptyList" >> return EmptyListExpr
+
+-- | CondExpr ::= cond {Expression ==> Expression}* end
+condExpr = do
+  _ <- keyWord "cond"
+  pairs <- many pair
+  _ <- keyWord "end"
+  return $ CondExpr pairs
+  where
+    pair = do
+      expr1 <- expression
+      _ <- longArrow
+      expr2 <- expression
+      return (expr1, expr2)
+
 
 -- | Expression ::= ConstExpr
 --              ::= BinOpExpr
 --              ::= UnaryOpExpr
 --              ::= IfExpr
+--              ::= CondExpr
 --              ::= VarExpr
 --              ::= LetExpr
 --              ::= EmptyListExpr
@@ -164,6 +181,7 @@ expression = try constExpr
          <|> try binOpExpr
          <|> try unaryOpExpr
          <|> try ifExpr
+         <|> try condExpr
          <|> try varExpr
          <|> try letExpr
          <|> try emptyListExpr
