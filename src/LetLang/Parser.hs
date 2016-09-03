@@ -4,14 +4,12 @@ module LetLang.Parser
 , parseProgram
 ) where
 
-import           Control.Monad               (void)
-import           Data.Maybe                  (fromMaybe)
-import           LetLang.Data.ExpressedValue
-import           LetLang.Data.Expression
-import           LetLang.Data.Program
+import           Control.Monad          (void)
+import           Data.Maybe             (fromMaybe)
+import           LetLang.Data
 import           Text.Megaparsec
 import           Text.Megaparsec.Expr
-import qualified Text.Megaparsec.Lexer       as L
+import qualified Text.Megaparsec.Lexer  as L
 import           Text.Megaparsec.String
 
 parseProgram :: String -> Either String Program
@@ -90,7 +88,7 @@ expressionPair = parens $ do
 
 -- | ConstExpr ::= Number
 constExpr :: Parser Expression
-constExpr = ConstExpr . NumVal <$> integer
+constExpr = ConstExpr . ExprNum <$> integer
 
 -- | BinOpExpr ::= BinOp (Expression, Expression)
 binOpExpr :: Parser Expression
@@ -115,7 +113,7 @@ ifExpr = do
   thenE <- expression
   _ <- keyWord "else"
   elseE <- expression
-  return $ CondExpr [(ifE, thenE), (ConstExpr (BoolVal True), elseE)]
+  return $ CondExpr [(ifE, thenE), (ConstExpr (ExprBool True), elseE)]
 
 -- | VarExpr ::= Identifier
 varExpr :: Parser Expression
@@ -167,6 +165,7 @@ emptyListExpr :: Parser Expression
 emptyListExpr = keyWord "emptyList" >> return EmptyListExpr
 
 -- | CondExpr ::= cond {Expression ==> Expression}* end
+condExpr :: Parser Expression
 condExpr = do
   _ <- keyWord "cond"
   pairs <- many pair

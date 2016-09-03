@@ -5,10 +5,7 @@ module LetLang.Evaluator
 , evalProgram
 ) where
 
-import           LetLang.Data.Environment
-import           LetLang.Data.ExpressedValue
-import           LetLang.Data.Expression
-import           LetLang.Data.Program
+import           LetLang.Data
 import           LetLang.Parser
 
 type EvaluateResult = Either String ExpressedValue
@@ -28,28 +25,28 @@ valueOf (VarExpr var) env = case applySafe env var of
   Nothing  -> Left $ "Not in scope: " `mappend` var
   Just val -> Right val
 -- begin operate on list
-valueOf EmptyListExpr _ = Right $ ListVal []
+valueOf EmptyListExpr _ = Right $ ExprList []
 valueOf (BinOpExpr Cons expr1 expr2) env =
   case (valueOf expr1 env, valueOf expr2 env) of
     (msg@(Left _), _) -> msg
     (_, msg@(Left _)) -> msg
-    (Right v, Right (ListVal lst)) -> Right $ ListVal (v:lst)
+    (Right v, Right (ExprList lst)) -> Right $ ExprList (v:lst)
     (_, Right v) -> Left $
       "The second operand of '" `mappend` show Cons `mappend`
       "' should be list, but got: " `mappend` show v
 valueOf (UnaryOpExpr Car expr) env =
   case valueOf expr env of
     msg@(Left _) -> msg
-    Right (ListVal []) -> Left "Could not apply 'car' on empty list"
-    Right (ListVal (v:_)) -> Right v
+    Right (ExprList []) -> Left "Could not apply 'car' on empty list"
+    Right (ExprList (v:_)) -> Right v
     Right v -> Left $
       "Operand of '" `mappend` show Car `mappend`
       "' should be list, but got: " `mappend` show v
 valueOf (UnaryOpExpr Cdr expr) env =
   case valueOf expr env of
     msg@(Left _) -> msg
-    Right (ListVal []) -> Left "Could not apply 'cdr' on empty list"
-    Right (ListVal (_:t)) -> Right $ ListVal t
+    Right (ExprList []) -> Left "Could not apply 'cdr' on empty list"
+    Right (ExprList (_:t)) -> Right $ ExprList t
     Right v -> Left $
       "Operand of '" `mappend` show Cdr `mappend`
       "' should be list, but got: " `mappend` show v
@@ -94,14 +91,14 @@ evalBinOpExpr op expr1 expr2 env =
            , lookup op binBoolOpMap
            ) of
         (Just func, _, _) -> case (val1, val2) of
-          (NumVal n1, NumVal n2) -> Right . NumVal $ func n1 n2
-          (a, b)                 -> opError "number" op a b
+          (ExprNum n1, ExprNum n2) -> Right . ExprNum $ func n1 n2
+          (a, b)                   -> opError "number" op a b
         (_, Just func, _) -> case (val1, val2) of
-          (NumVal n1, NumVal n2) -> Right . BoolVal $ func n1 n2
-          (a, b)                 -> opError "number" op a b
+          (ExprNum n1, ExprNum n2) -> Right . ExprBool $ func n1 n2
+          (a, b)                   -> opError "number" op a b
         (_, _, Just func) -> case (val1, val2) of
-          (BoolVal b1, BoolVal b2) -> Right . BoolVal $ func b1 b2
-          (a, b)                   -> opError "boolean value" op a b
+          (ExprBool b1, ExprBool b2) -> Right . ExprBool $ func b1 b2
+          (a, b)                     -> opError "boolean value" op a b
         _ -> invalidOpError op
   where
     wrapVal1 = valueOf expr1 env
@@ -127,14 +124,14 @@ evalUnaryOpExpr op expr env =
            , lookup op unaryBoolOpMap
            ) of
         (Just func, _, _) -> case val of
-          (NumVal n) -> Right . NumVal $ func n
-          _          -> opError "number" op val
+          (ExprNum n) -> Right . ExprNum $ func n
+          _           -> opError "number" op val
         (_, Just func, _) -> case val of
-          (NumVal n) -> Right . BoolVal $ func n
-          _          -> opError "number" op val
+          (ExprNum n) -> Right . ExprBool $ func n
+          _           -> opError "number" op val
         (_, _, Just func) -> case val of
-          (BoolVal b) -> Right . BoolVal $ func b
-          _           -> opError "boolean value" op val
+          (ExprBool b) -> Right . ExprBool $ func b
+          _            -> opError "boolean value" op val
         _ -> invalidOpError op
   where
     opError typeName op val = Left $ unlines
@@ -146,7 +143,7 @@ evalUnaryOpExpr op expr env =
 buildList :: [Expression] -> Environment -> EvaluateResult
 buildList es env = case collect of
   Left msg   -> Left msg
-  Right ress -> Right . ListVal $ reverse ress
+  Right ress -> Right . ExprList $ reverse ress
   where
     collector :: Either String [ExpressedValue]
               -> EvaluateResult
@@ -160,13 +157,12 @@ buildList es env = case collect of
     collect :: Either String [ExpressedValue]
     collect = foldl collector (Right []) results
 
-
 evalCondExpr :: [(Expression, Expression)] -> Environment -> EvaluateResult
 evalCondExpr [] _ = Left "No predicate is true"
 evalCondExpr ((e1, e2):pairs) env = case valueOf e1 env of
   Left msg -> Left msg
-  Right (BoolVal True) -> valueOf e2 env
-  Right (BoolVal False) -> evalCondExpr pairs env
+  Right (ExprBool True) -> valueOf e2 env
+  Right (ExprBool False) -> evalCondExpr pairs env
   Right v -> Left $
     "Predicate expression should be boolean, but got: "
     `mappend` show v

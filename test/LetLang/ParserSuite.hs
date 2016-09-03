@@ -2,9 +2,7 @@ module LetLang.ParserSuite
 ( tests
 ) where
 
-import           LetLang.Data.ExpressedValue
-import           LetLang.Data.Expression
-import           LetLang.Data.Program
+import           LetLang.Data
 import           LetLang.Parser
 import           Test.HUnit.Base
 import           Text.Megaparsec
@@ -22,8 +20,8 @@ tests = TestList
   , TestLabel "Test parse program" testParseProgram
   ]
 
-constNum = ConstExpr . NumVal
-constBool = ConstExpr . BoolVal
+constNum = ConstExpr . ExprNum
+constBool = ConstExpr . ExprBool
 
 parserEqCase :: (Eq a, Show a) => Parser a -> String -> a -> String -> Test
 parserEqCase parser msg expect input =
