@@ -20,7 +20,13 @@ library
                      , LetLang.Data.ExpressedValue
                      , LetLang.Data.Expression
                      , LetLang.Data.Program
+                     
+                     , ProcLang.Evaluator
+                     , ProcLang.Parser
+                     , ProcLang.Data
+                     
                      , Repl
+                     
   build-depends:       base 
                      , megaparsec
                      , containers

@@ -3,18 +3,19 @@ module Repl
 ( repl
 ) where
 
-import           Data.Maybe        (fromMaybe)
-import qualified LetLang.Evaluator as Let
+import           Data.Maybe         (fromMaybe)
+import qualified LetLang.Evaluator  as LetLang
+import qualified ProcLang.Evaluator as ProcLang
 import           System.IO
 
 data Runnable = forall a b. (Show a) => Runnable (String -> Either String a)
 
-defaultLang = "LetLang"
+defaultLang = "ProcLang"
 
 supportedLangs :: [(String, Runnable)]
-supportedLangs = fmap
-  (\p -> (fst p, Runnable (snd p)))
-  [ ("LetLang", Let.run)
+supportedLangs =
+  [ ("LetLang", Runnable LetLang.run)
+  , ("ProcLang", Runnable ProcLang.run)
   ]
 
 flushStr :: String -> IO ()
@@ -25,7 +26,7 @@ readPrompt prompt = flushStr prompt >> getLine
 
 repl :: IO ()
 repl = do
-  print $ "Hello " `mappend` defaultLang
+  putStrLn $ "Hello " `mappend` defaultLang
   loop (getLang defaultLang)
   where
     getLang lang = fromMaybe (error ("unknown lang: " `mappend` lang)) (lookup lang supportedLangs)
