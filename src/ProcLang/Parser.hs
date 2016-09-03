@@ -77,6 +77,9 @@ identifier = lexeme (p >>= check)
 integer :: Parser Integer
 integer = lexeme L.integer
 
+signedInteger :: Parser Integer
+signedInteger = L.signed spaceConsumer integer
+
 -- expressionPair ::= (Expression, Expression)
 expressionPair :: Parser (Expression, Expression)
 expressionPair = parens $ do
@@ -87,7 +90,7 @@ expressionPair = parens $ do
 
 -- | ConstExpr ::= Number
 constExpr :: Parser Expression
-constExpr = ConstExpr . ExprNum <$> integer
+constExpr = ConstExpr . ExprNum <$> signedInteger
 
 -- | BinOpExpr ::= BinOp (Expression, Expression)
 binOpExpr :: Parser Expression

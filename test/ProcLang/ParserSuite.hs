@@ -47,7 +47,7 @@ testConstExpr :: Test
 testConstExpr = TestList
   [ testEq "Parse single number" (constNum 5) "5"
   , testEq "Parse multi-numbers" (constNum 123) "123"
-  , testFail "Parse negative numbers should fail" "-3"
+  , testEq "Parse negative number" (constNum (-233)) "-233"
   ]
 
 testBinOpExpr :: Test
