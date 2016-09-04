@@ -25,6 +25,10 @@ library
                      , ProcLang.Evaluator
                      , ProcLang.Parser
                      
+                     , LetRecLang.Data
+                     , LetRecLang.Evaluator
+                     , LetRecLang.Parser
+                     
   build-depends:       base 
                      , megaparsec
                      , containers
