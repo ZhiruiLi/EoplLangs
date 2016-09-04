@@ -5,7 +5,7 @@ import           Data.Maybe (fromMaybe)
 
 data Environment = EmptyEnv
                  | NormalEnv (M.Map String ExpressedValue) Environment
-                 | RecEnv String [String] Expression Environment
+                 | RecEnv (M.Map String ([String], Expression)) Environment
 
 empty :: Environment
 empty = EmptyEnv
@@ -21,8 +21,9 @@ extend param val (NormalEnv headEnv restEnv) =
 extend param val env@RecEnv{} =
   NormalEnv (M.fromList [(param, val)]) env
 
-extendRec :: String -> [String] -> Expression -> Environment -> Environment
-extendRec = RecEnv
+extendRec :: [(String, [String], Expression)] -> Environment -> Environment
+extendRec lst = RecEnv (M.fromList (fmap func lst))
+  where func (name, params, body) = (name, (params, body))
 
 extendMany :: [(String, ExpressedValue)] -> Environment -> Environment
 extendMany = flip (foldl func)
@@ -40,10 +41,10 @@ applySafe (NormalEnv headEnv restEnv) name =
   case M.lookup name headEnv of
     Nothing -> applySafe restEnv name
     res     -> res
-applySafe env@(RecEnv procName params procBody restEnv) name =
-  if procName == name
-    then Just $ ExprProc params procBody env
-    else applySafe restEnv name
+applySafe env@(RecEnv headEnv restEnv) name =
+  case M.lookup name headEnv of
+    Nothing             -> applySafe restEnv name
+    Just (params, body) -> Just $ ExprProc params body env
 
 data Program = Program Expression
   deriving (Show, Eq)
@@ -58,7 +59,7 @@ data Expression =
   | CondExpr [(Expression, Expression)]
   | ProcExpr [String] Expression
   | CallExpr Expression [Expression]
-  | LetRecExpr String [String] Expression Expression
+  | LetRecExpr [(String, [String], Expression)] Expression
   deriving(Show, Eq)
 
 data BinOp =

@@ -49,6 +49,14 @@ testLet = TestList
              , "        = if zero?(x) then 0 else -((double -(x,1)), -2)"
              , "in (double 6)"
              ]
+  , testEq "Eval co-recursion"
+           (ExprNum 1)
+           $ unlines
+             [ "letrec"
+             , "  even(x) = if zero?(x) then 1 else (odd -(x,1))"
+             , "  odd(x) = if zero?(x) then 0 else (even -(x,1))"
+             , "in (odd 13)"
+             ]
   ]
 
 testCond :: Test

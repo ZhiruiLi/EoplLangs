@@ -24,8 +24,8 @@ valueOf (ConstExpr x) _   = Right x
 valueOf (VarExpr var) env = case applySafe env var of
   Nothing  -> Left $ "Not in scope: " `mappend` var
   Just val -> Right val
-valueOf (LetRecExpr procName params procBody recBody) env =
-  valueOf recBody (extendRec procName params procBody env)
+valueOf (LetRecExpr procs recBody) env =
+  valueOf recBody (extendRec procs env)
 valueOf (BinOpExpr op expr1 expr2) env = evalBinOpExpr op expr1 expr2 env
 valueOf (UnaryOpExpr op expr) env = evalUnaryOpExpr op expr env
 valueOf (CondExpr pairs) env = evalCondExpr pairs env

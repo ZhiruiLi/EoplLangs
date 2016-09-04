@@ -127,8 +127,7 @@ testLetExpr = TestList
           "let x = 30 in let* x = -(x,1) y = -(x,2) in -(x,y)"
   , testEq "Parse let recursive expression"
          (LetRecExpr
-           "double" ["xxx"]
-           (BinOpExpr Mul (constNum 2) (VarExpr "xxx"))
+           [("double", ["xxx"], BinOpExpr Mul (constNum 2) (VarExpr "xxx"))]
            (CallExpr (VarExpr "double") [constNum 5]))
          "letrec double(xxx) = *(2, xxx) in (double 5)"
   ]

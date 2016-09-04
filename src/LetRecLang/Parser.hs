@@ -122,11 +122,11 @@ varExpr :: Parser Expression
 varExpr = VarExpr <$> identifier
 
 
--- | letStarExpr ::= let* {Identifier = Expression}* in Expression
+-- | LetStarExpr ::= let* {Identifier = Expression}* in Expression
 letStarExpr :: Parser Expression
 letStarExpr = letFamilyExpr "let*" LetStarExpr
 
--- | letExpr ::= let {Identifier = Expression}* in Expression
+-- | LetExpr ::= let {Identifier = Expression}* in Expression
 letExpr :: Parser Expression
 letExpr = letFamilyExpr "let" LetExpr
 
@@ -146,16 +146,22 @@ letFamilyExpr letType builder = do
       val <- expression
       return (var, val)
 
+-- | LetrecExpr ::= letrec {Identifier (Identifier) = Expression} in Expression
 letRecExpr :: Parser Expression
 letRecExpr = do
   _ <- keyWord "letrec"
-  procName <- identifier
-  params <- parens (sepBy identifier comma)
-  _ <- equal
-  proc <- expression
+  procBindings <- many procBinding
   _ <- keyWord "in"
-  body <- expression
-  return $ LetRecExpr procName params proc body
+  recBody <- expression
+  return $ LetRecExpr procBindings recBody
+  where
+    procBinding = try $ do
+      procName <- identifier
+      params <- parens (sepBy identifier comma)
+      _ <- equal
+      procBody <- expression
+      return (procName, params, procBody)
+
 
 -- | ManyExprs ::= <empty>
 --             ::= Many1Exprs
