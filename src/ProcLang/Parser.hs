@@ -45,7 +45,7 @@ reservedWords  =
 binOpsMap :: [(String, BinOp)]
 binOpsMap =
   [ ("+", Add), ("-", Sub), ("*", Mul), ("/", Div), ("equal?", Eq)
-  , ("greater?", Gt), ("less?", Le), ("cons", Cons) ]
+  , ("greater?", Gt), ("less?", Le) ]
 
 binOp :: Parser BinOp
 binOp = do
@@ -56,7 +56,7 @@ binOp = do
 
 unaryOpsMap :: [(String, UnaryOp)]
 unaryOpsMap =
-  [ ("car", Car), ("cdr", Cdr), ("minus", Minus), ("zero?", IsZero) ]
+  [ ("minus", Minus), ("zero?", IsZero) ]
 
 unaryOp :: Parser UnaryOp
 unaryOp = do

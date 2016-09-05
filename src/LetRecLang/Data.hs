@@ -109,10 +109,10 @@ data Expression =
   deriving(Show, Eq)
 
 data BinOp =
-  Add | Sub | Mul | Div | Gt | Le | Eq | Cons
+  Add | Sub | Mul | Div | Gt | Le | Eq
   deriving(Show, Eq)
 
-data UnaryOp = Car | Cdr | Minus | IsZero
+data UnaryOp = Minus | IsZero
   deriving(Show, Eq)
 
 data ExpressedValue = ExprNum Integer
