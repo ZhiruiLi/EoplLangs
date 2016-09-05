@@ -92,7 +92,7 @@ apply env var = fromMaybe
   (error $ "Var " `mappend` var `mappend` " is not in environment!")
   (applySafe env var)
 
-data Program = Program Expression
+data Program = Prog Expression
   deriving (Show, Eq)
 
 data Expression =

@@ -17,7 +17,7 @@ eval :: Expression -> EvaluateResult
 eval = flip valueOf empty
 
 evalProgram :: Program -> EvaluateResult
-evalProgram (Program expr) = eval expr
+evalProgram (Prog expr) = eval expr
 
 valueOf :: Expression -> Environment -> EvaluateResult
 valueOf (ConstExpr x) _                 = evalConstExpr x

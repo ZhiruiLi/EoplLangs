@@ -228,4 +228,4 @@ program = do
   _ <- spaceConsumer
   expr <- expression
   _ <- eof
-  return $ Program expr
+  return $ Prog expr

@@ -27,7 +27,7 @@ apply env var = fromMaybe
 applySafe :: Environment -> String -> Maybe ExpressedValue
 applySafe = flip M.lookup
 
-data Program = Program Expression
+data Program = Prog Expression
   deriving (Show, Eq)
 
 data Expression =

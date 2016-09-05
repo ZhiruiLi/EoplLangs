@@ -150,7 +150,7 @@ testExpression = TestList
 testParseProgram :: Test
 testParseProgram = TestList
   [ testEq "Parse program (with spaces)"
-            (Program (LetExpr [("x", constNum 3)]
+            (Prog (LetExpr [("x", constNum 3)]
                               (VarExpr "x")))
             "let x = 3 in x"
   ]
