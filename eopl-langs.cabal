@@ -29,6 +29,11 @@ library
                      , LetRecLang.Evaluator
                      , LetRecLang.Parser
                      
+                     , NamelessIntp.Data
+                     , NamelessIntp.Evaluator
+                     , NamelessIntp.Parser
+                     , NamelessIntp.Translator
+                     
   build-depends:       base 
                      , megaparsec
                      , containers

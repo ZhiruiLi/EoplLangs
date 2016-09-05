@@ -7,6 +7,7 @@ import           Data.Char              (isSpace)
 import           Data.Maybe             (fromMaybe)
 import qualified LetLang.Evaluator      as LetLang
 import qualified LetRecLang.Evaluator   as LetRecLang
+import qualified NamelessIntp.Evaluator as NamelessIntp
 import qualified ProcLang.Evaluator     as ProcLang
 import           System.IO
 import           Text.Megaparsec
@@ -14,7 +15,7 @@ import           Text.Megaparsec.String
 
 data Lang = forall a b. (Show a) => Runnable (String -> Either String a)
 
-defaultLangName = "LetRecLang"
+defaultLangName = "Nameless"
 
 lookupLang :: String -> Maybe Lang
 lookupLang name = lookup name supportedLangs
@@ -38,6 +39,7 @@ supportedLangs =
   [ ("LetLang", Runnable LetLang.run)
   , ("ProcLang", Runnable ProcLang.run)
   , ("LetRecLang", Runnable LetRecLang.run)
+  , ("Nameless", Runnable NamelessIntp.run)
   ]
 
 flushStr :: String -> IO ()
