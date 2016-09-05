@@ -20,19 +20,29 @@ evalProgram :: Program -> EvaluateResult
 evalProgram (Program expr) = eval expr
 
 valueOf :: Expression -> Environment -> EvaluateResult
-valueOf (ConstExpr x) _   = Right x
-valueOf (VarExpr var) env = case applySafe env var of
+valueOf (ConstExpr x) _                 = evalConstExpr x
+valueOf (VarExpr var) env               = evalVarExpr var env
+valueOf (LetRecExpr procs recBody) env  = evalLetRecExpr procs recBody env
+valueOf (BinOpExpr op expr1 expr2) env  = evalBinOpExpr op expr1 expr2 env
+valueOf (UnaryOpExpr op expr) env       = evalUnaryOpExpr op expr env
+valueOf (CondExpr pairs) env            = evalCondExpr pairs env
+valueOf (LetExpr bindings body) env     = evalLetExpr bindings body env
+valueOf (LetStarExpr bindings body) env = evalLetStarExpr bindings body env
+valueOf (ProcExpr params body) env      = evalProcExpr params body env
+valueOf (CallExpr rator rand) env       = evalCallExpr rator rand env
+
+evalConstExpr :: ExpressedValue -> EvaluateResult
+evalConstExpr = Right
+
+evalVarExpr :: String -> Environment -> EvaluateResult
+evalVarExpr var env = case applySafe env var of
   Nothing  -> Left $ "Not in scope: " `mappend` var
   Just val -> Right val
-valueOf (LetRecExpr procs recBody) env =
-  valueOf recBody (extendRec procs env)
-valueOf (BinOpExpr op expr1 expr2) env = evalBinOpExpr op expr1 expr2 env
-valueOf (UnaryOpExpr op expr) env = evalUnaryOpExpr op expr env
-valueOf (CondExpr pairs) env = evalCondExpr pairs env
-valueOf (LetExpr bindings body) env = evalLetExpr bindings body env
-valueOf (LetStarExpr bindings body) env = evalLetStarExpr bindings body env
-valueOf (ProcExpr params body) env = Right $ ExprProc params body env
-valueOf (CallExpr rator rand) env = evalCallExpr rator rand env
+
+evalLetRecExpr :: [(String, [String], Expression)] -> Expression -> Environment
+               -> EvaluateResult
+evalLetRecExpr procsSubUnits recBody env =
+  valueOf recBody $ extendRecMany procsSubUnits env
 
 binBoolOpMap :: [(BinOp, Bool -> Bool -> Bool)]
 binBoolOpMap = []
@@ -52,10 +62,7 @@ unaryNumToNumOpMap = [(Minus, negate)]
 unaryNumToBoolOpMap :: [(UnaryOp, Integer -> Bool)]
 unaryNumToBoolOpMap = [(IsZero, (0 ==))]
 
-evalBinOpExpr :: BinOp
-              -> Expression
-              -> Expression
-              -> Environment
+evalBinOpExpr :: BinOp -> Expression -> Expression -> Environment
               -> EvaluateResult
 evalBinOpExpr op expr1 expr2 env =
   case (wrapVal1, wrapVal2) of
@@ -87,9 +94,7 @@ evalBinOpExpr op expr1 expr2 env =
 
 invalidOpError op = error $ "Invalid operator: " `mappend` show op
 
-evalUnaryOpExpr :: UnaryOp
-                -> Expression
-                -> Environment
+evalUnaryOpExpr :: UnaryOp -> Expression -> Environment
                 -> EvaluateResult
 evalUnaryOpExpr op expr env =
   case valueOf expr env of
@@ -126,7 +131,8 @@ evalCondExpr ((e1, e2):pairs) env = case valueOf e1 env of
     "Predicate expression should be boolean, but got: "
     `mappend` show v
 
-evalLetExpr :: [(String, Expression)] -> Expression -> Environment -> EvaluateResult
+evalLetExpr :: [(String, Expression)] -> Expression -> Environment
+            -> EvaluateResult
 evalLetExpr bindings body env = case evaledBindings of
   Left msg    -> Left msg
   Right pairs -> valueOf body $ extendMany pairs env
@@ -143,11 +149,15 @@ evalLetExpr bindings body env = case evaledBindings of
       left@(Left _) -> left
       Right pairs   -> Right $ reverse pairs
 
-evalLetStarExpr :: [(String, Expression)] -> Expression -> Environment -> EvaluateResult
+evalLetStarExpr :: [(String, Expression)] -> Expression -> Environment
+                -> EvaluateResult
 evalLetStarExpr [] body env = valueOf body env
 evalLetStarExpr ((var, expr):pairs) body env = case valueOf expr env of
   Left msg  -> Left msg
   Right val -> evalLetStarExpr pairs body (extend var val env)
+
+evalProcExpr :: [String] -> Expression -> Environment -> EvaluateResult
+evalProcExpr params body env = Right $ ExprProc params body env
 
 evalCallExpr :: Expression -> [Expression] -> Environment -> EvaluateResult
 evalCallExpr rator rand env = case valueOf rator env of

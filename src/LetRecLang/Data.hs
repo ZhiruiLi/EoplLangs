@@ -3,6 +3,10 @@ module LetRecLang.Data where
 import qualified Data.Map   as M
 import           Data.Maybe (fromMaybe)
 
+-- | This implementation (together with applySafe') is inefficient,
+-- as it build a new closure every time the procedure is retrived.
+-- Use lazy evaluation, we can have a better solution
+{-
 data Environment = EmptyEnv
                  | NormalEnv (M.Map String ExpressedValue) Environment
                  | RecEnv (M.Map String ([String], Expression)) Environment
@@ -21,19 +25,13 @@ extend param val (NormalEnv headEnv restEnv) =
 extend param val env@RecEnv{} =
   NormalEnv (M.fromList [(param, val)]) env
 
-extendRec :: [(String, [String], Expression)] -> Environment -> Environment
-extendRec lst = RecEnv (M.fromList (fmap func lst))
+extendRec :: String -> [String] -> Expression -> Environment -> Environment
+extendRec name params procBody env =
+  extendRecMany [(name, params, procBody)] env
+
+extendRecMany :: [(String, [String], Expression)] -> Environment -> Environment
+extendRecMany lst = RecEnv (M.fromList (fmap func lst))
   where func (name, params, body) = (name, (params, body))
-
-extendMany :: [(String, ExpressedValue)] -> Environment -> Environment
-extendMany = flip (foldl func)
-  where
-    func env (var, val) = extend var val env
-
-apply :: Environment -> String -> ExpressedValue
-apply env var = fromMaybe
-  (error $ "Var " `mappend` var `mappend` " is not in environment!")
-  (applySafe env var)
 
 applySafe :: Environment -> String -> Maybe ExpressedValue
 applySafe EmptyEnv _ = Nothing
@@ -45,6 +43,54 @@ applySafe env@(RecEnv headEnv restEnv) name =
   case M.lookup name headEnv of
     Nothing             -> applySafe restEnv name
     Just (params, body) -> Just $ ExprProc params body env
+
+extendMany :: [(String, ExpressedValue)] -> Environment -> Environment
+extendMany = flip (foldl func)
+  where
+    func env (var, val) = extend var val env
+
+apply :: Environment -> String -> ExpressedValue
+apply env var = fromMaybe
+  (error $ "Var " `mappend` var `mappend` " is not in environment!")
+  (applySafe env var)
+-}
+
+type Environment = M.Map String ExpressedValue
+
+empty :: Environment
+empty = M.empty
+
+initEnvironment :: [(String, ExpressedValue)] -> Environment
+initEnvironment = M.fromList
+
+extend :: String -> ExpressedValue -> Environment -> Environment
+extend = M.insert
+
+extendRec :: String -> [String] -> Expression -> Environment -> Environment
+extendRec name params body env = newEnv
+  where newEnv = extend name (ExprProc params body newEnv) env
+
+extendRecMany :: [(String, [String], Expression)] -> Environment -> Environment
+extendRecMany triples env = newEnv
+  where
+    newEnv =
+      extendMany
+      (fmap (\(name, params, body) ->
+               (name, ExprProc params body newEnv)) triples)
+      env
+
+applySafe :: Environment -> String -> Maybe ExpressedValue
+applySafe = flip M.lookup
+
+extendMany :: [(String, ExpressedValue)] -> Environment -> Environment
+extendMany = flip (foldl func)
+  where
+    func env (var, val) = extend var val env
+
+apply :: Environment -> String -> ExpressedValue
+apply env var = fromMaybe
+  (error $ "Var " `mappend` var `mappend` " is not in environment!")
+  (applySafe env var)
 
 data Program = Program Expression
   deriving (Show, Eq)
