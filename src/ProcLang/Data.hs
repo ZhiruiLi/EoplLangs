@@ -65,7 +65,7 @@ instance Eq ExpressedValue where
 
 data DenotedValue = DenoNum Integer
                   | DenoBool Bool
-                  | DenoProc [String] [Expression] Environment
+                  | DenoProc [String] Expression Environment
 
 instance Show DenotedValue where
   show (DenoNum i)  = show i
