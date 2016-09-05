@@ -103,7 +103,7 @@ evalBinOpExpr op expr1 expr2 env =
   where
     wrapVal1 = valueOf expr1 env
     wrapVal2 = valueOf expr2 env
-    opError typeName op a b = Left $ unlines
+    opError typeName op a b = Left $ concat
       [ "Operands of binary ", show op, " operator "
       , "should both be ", typeName, "s, but got: "
       , show a, " and ", show b
@@ -134,7 +134,7 @@ evalUnaryOpExpr op expr env =
           _            -> opError "boolean value" op val
         _ -> invalidOpError op
   where
-    opError typeName op val = Left $ unlines
+    opError typeName op val = Left $ concat
       [ "Operand of ", show op , " operator "
       , "should be ", typeName, ", but got: "
       , show val
