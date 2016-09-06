@@ -12,7 +12,7 @@ import           Text.Megaparsec.Expr
 import qualified Text.Megaparsec.Lexer  as L
 import           Text.Megaparsec.String
 
-parseProgram :: String -> Either String Program
+parseProgram :: String -> Try Program
 parseProgram input = case runParser program "Program Parser" input of
   Left err -> Left $ show err
   Right p  -> Right p
