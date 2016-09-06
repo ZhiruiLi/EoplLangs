@@ -61,6 +61,13 @@ testProc = TestList
   [ testEq "Eval proc and call expression (1 parameter)"
            (ExprNum 2)
            "(proc (x) + (x, x) 1)"
+  , testEq "Eval letrec expression"
+           (ExprNum 6)
+           $ unlines
+             [ "letrec double (x) = "
+             , "  if zero?(x) then 0 else + (2, (double - (x, 1)))"
+             , "in (double 3)"
+             ]
   ]
 
 testEq :: String -> ExpressedValue -> String -> Test

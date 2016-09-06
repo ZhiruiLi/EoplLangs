@@ -88,15 +88,13 @@ transCondExpr pairs senv =
       nlE2 <- translate e2 senv
       return $ (nlE1, nlE2):pairs
 
--- | TODO: Incorrect implementation for translating let rec epxr
--- from question 3.40
 transLetRecExpr :: String -> String -> Expression -> Expression
                 -> StaticEnvironment
                 -> TranslateResult
-transLetRecExpr procName param expr body senv = do
-  procBody <- translate expr (extendSEnv param (extendSEnv procName senv))
-  body <- translate body (extendSEnv procName senv)
-  return $ NamelessLetRecExpr (NamelessProcExpr procBody) body
+transLetRecExpr procName param procBodyExpr bodyExpr senv = do
+  procBody <- translate procBodyExpr (extendSEnv param (extendSEnv procName senv))
+  body <- translate bodyExpr (extendSEnv procName senv)
+  return $ NamelessLetRecExpr procBody body
 
 
 

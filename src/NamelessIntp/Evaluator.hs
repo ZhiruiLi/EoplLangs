@@ -5,6 +5,7 @@ module NamelessIntp.Evaluator
 , evalProgram
 ) where
 
+import           Debug.Trace             (trace)
 import           NamelessIntp.Data
 import           NamelessIntp.Parser
 import           NamelessIntp.Translator
@@ -177,8 +178,6 @@ evalCondExpr ((e1, e2):pairs) env = do
   if b then valueOf e2 env else evalCondExpr pairs env
 evalCondExpr [] _ = Left "No predicate is true"
 
--- | TODO: Incorrect implementation for evaluating let rec epxr
--- from question 3.40
 evalLetRecExpr :: NamelessExpression -> NamelessExpression
                -> NamelessEnvironment
                -> EvaluateResult
