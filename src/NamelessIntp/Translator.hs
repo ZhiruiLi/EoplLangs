@@ -22,6 +22,7 @@ translate (IfExpr ifE thenE elseE) senv   = transIfExpr ifE thenE elseE senv
 translate (ProcExpr param body) senv      = transProcExpr param body senv
 translate (CallExpr rator rand) senv      = transCallExpr rator rand senv
 translate (CondExpr pairs) senv           = transCondExpr pairs senv
+translate (LetRecExpr n p e b) senv       = transLetRecExpr n p e b senv
 
 transConstExpr :: Integer -> TranslateResult
 transConstExpr i = Right $ NamelessConstExpr i
@@ -86,3 +87,16 @@ transCondExpr pairs senv =
       nlE1 <- translate e1 senv
       nlE2 <- translate e2 senv
       return $ (nlE1, nlE2):pairs
+
+-- | TODO: Incorrect implementation for translating let rec epxr
+-- from question 3.40
+transLetRecExpr :: String -> String -> Expression -> Expression
+                -> StaticEnvironment
+                -> TranslateResult
+transLetRecExpr procName param expr body senv = do
+  procBody <- translate expr (extendSEnv param (extendSEnv procName senv))
+  body <- translate body (extendSEnv procName senv)
+  return $ NamelessLetRecExpr (NamelessProcExpr procBody) body
+
+
+

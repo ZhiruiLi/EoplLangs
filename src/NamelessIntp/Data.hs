@@ -62,6 +62,7 @@ data NamelessExpression =
   | NamelessIfExpr NamelessExpression NamelessExpression NamelessExpression
   | NamelessCallExpr NamelessExpression NamelessExpression
   | NamelessCondExpr [(NamelessExpression, NamelessExpression)]
+  | NamelessLetRecExpr NamelessExpression NamelessExpression
   deriving (Show, Eq)
 
 data Program = Prog Expression

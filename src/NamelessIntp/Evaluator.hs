@@ -37,7 +37,7 @@ valueOf (NamelessLetExpr expr body) env = evalLetExpr expr body env
 valueOf (NamelessProcExpr body) env = evalProcExpr body env
 valueOf (NamelessCallExpr rator rand) env = evalCallExpr rator rand env
 valueOf (NamelessCondExpr pairs) env = evalCondExpr pairs env
-
+valueOf (NamelessLetRecExpr proc body) env = evalLetRecExpr proc body env
 
 evalConstExpr :: Integer -> EvaluateResult
 evalConstExpr n = Right $ ExprNum n
@@ -177,3 +177,11 @@ evalCondExpr ((e1, e2):pairs) env = do
   if b then valueOf e2 env else evalCondExpr pairs env
 evalCondExpr [] _ = Left "No predicate is true"
 
+-- | TODO: Incorrect implementation for evaluating let rec epxr
+-- from question 3.40
+evalLetRecExpr :: NamelessExpression -> NamelessExpression
+               -> NamelessEnvironment
+               -> EvaluateResult
+evalLetRecExpr procBody body env = valueOf body (extend proc env)
+  where
+    proc = ExprProc procBody (extend proc env)
