@@ -19,17 +19,15 @@ extend = (:)
 extendMany :: [ExpressedValue] -> NamelessEnvironment -> NamelessEnvironment
 extendMany = mappend
 
-apply :: NamelessEnvironment -> Integer -> DenotedValue
+apply :: NamelessEnvironment -> Integer -> ExpressedValue
 apply env lexAddr = fromMaybe
   (error $ "Invalid address: " `mappend` show lexAddr `mappend` "!")
   (applySafe env lexAddr)
 
-applySafe :: NamelessEnvironment -> Integer -> Maybe DenotedValue
-applySafe (ExprNum n:_) 0         = Just $ DenoNum n
-applySafe (ExprBool b:_) 0        = Just $ DenoBool b
-applySafe (ExprProc body env:_) 0 = Just $ DenoProc body env
-applySafe (_:xs) n                = applySafe xs (n - 1)
-applySafe [] n                    = Nothing
+applySafe :: NamelessEnvironment -> Integer -> Maybe ExpressedValue
+applySafe (x:_) 0  = Just x
+applySafe (_:xs) n = applySafe xs (n - 1)
+applySafe [] n     = Nothing
 
 type StaticEnvironment = [String]
 

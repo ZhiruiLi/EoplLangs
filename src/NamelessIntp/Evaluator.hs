@@ -44,11 +44,9 @@ evalConstExpr :: Integer -> EvaluateResult
 evalConstExpr n = Right $ ExprNum n
 
 evalVarExpr :: Integer -> NamelessEnvironment -> EvaluateResult
-evalVarExpr addr env = case applySafe env addr of
-    Just (DenoNum i)              -> Right $ ExprNum i
-    Just (DenoBool b)             -> Right $ ExprBool b
-    Just (DenoProc body savedEnv) -> Right $ ExprProc body savedEnv
-    Nothing -> Left $ "Invalid address: " `mappend` show addr
+evalVarExpr addr env = liftMaybe
+  ("Invalid address: " `mappend` show addr)
+  (applySafe env addr)
 
 binBoolOpMap :: [(BinOp, Bool -> Bool -> Bool)]
 binBoolOpMap = []
