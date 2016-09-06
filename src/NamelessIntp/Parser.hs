@@ -152,7 +152,8 @@ callExpr = parens $ do
 condExpr :: Parser Expression
 condExpr = do
   _ <- keyWord "cond"
-  pairs <- many pair
+  pairs <- many $ try pair
+  _ <- keyWord "end"
   return $ CondExpr pairs
   where
     pair = do e1 <- expression

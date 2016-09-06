@@ -36,6 +36,7 @@ valueOf (NamelessUnaryOpExpr op expr) env = evalUnaryOpExpr op expr env
 valueOf (NamelessLetExpr expr body) env = evalLetExpr expr body env
 valueOf (NamelessProcExpr body) env = evalProcExpr body env
 valueOf (NamelessCallExpr rator rand) env = evalCallExpr rator rand env
+valueOf (NamelessCondExpr pairs) env = evalCondExpr pairs env
 
 
 evalConstExpr :: Integer -> EvaluateResult
@@ -131,13 +132,13 @@ evalIfExpr :: NamelessExpression
            -> EvaluateResult
 evalIfExpr ifE thenE elseE env = do
   val <- valueOf ifE env
-  b <- checkBool val
+  b <- checkBool val "Predicate of if expression"
   valueOf (if b then thenE else elseE) env
-  where
-    checkBool (ExprBool b) = return b
-    checkBool notBool = Left $
-      "Predicate expression should be boolean, but got: "
-      `mappend` show notBool
+
+
+checkBool (ExprBool b) _ = return b
+checkBool notBool name = Left $ concat
+  [ name, " should be boolean, but got: ", show notBool ]
 
 evalProcExpr :: NamelessExpression -> NamelessEnvironment -> EvaluateResult
 evalProcExpr body env = return $ ExprProc body env
@@ -166,3 +167,13 @@ evalCallExpr rator rand env = do
       `mappend` "but got: " `mappend` show noProc
     applyProcedure (body, savedEnv) rand =
       valueOf body (extend rand savedEnv)
+
+evalCondExpr :: [(NamelessExpression, NamelessExpression)]
+             -> NamelessEnvironment
+             -> EvaluateResult
+evalCondExpr ((e1, e2):pairs) env = do
+  v1 <- valueOf e1 env
+  b <- checkBool v1 "Predicate of cond expression"
+  if b then valueOf e2 env else evalCondExpr pairs env
+evalCondExpr [] _ = Left "No predicate is true"
+

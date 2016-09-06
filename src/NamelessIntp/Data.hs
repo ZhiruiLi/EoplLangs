@@ -50,6 +50,7 @@ applySEnv env var = fromMaybe
   (applySEnvSafe env var)
 
 data NamelessProgram = NamelessProg NamelessExpression
+  deriving (Show, Eq)
 
 data NamelessExpression =
     NamelessConstExpr Integer
@@ -61,6 +62,7 @@ data NamelessExpression =
   | NamelessIfExpr NamelessExpression NamelessExpression NamelessExpression
   | NamelessCallExpr NamelessExpression NamelessExpression
   | NamelessCondExpr [(NamelessExpression, NamelessExpression)]
+  deriving (Show, Eq)
 
 data Program = Prog Expression
   deriving (Show, Eq)
