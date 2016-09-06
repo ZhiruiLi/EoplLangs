@@ -21,6 +21,7 @@ translate (UnaryOpExpr op expr) senv      = transUnaryOpExpr op expr senv
 translate (IfExpr ifE thenE elseE) senv   = transIfExpr ifE thenE elseE senv
 translate (ProcExpr param body) senv      = transProcExpr param body senv
 translate (CallExpr rator rand) senv      = transCallExpr rator rand senv
+translate (CondExpr pairs) senv           = transCondExpr pairs senv
 
 transConstExpr :: Integer -> TranslateResult
 transConstExpr i = Right $ NamelessConstExpr i
@@ -71,3 +72,17 @@ transCallExpr rator rand senv = do
   r <- translate rator senv
   d <- translate rand senv
   return $ NamelessCallExpr r d
+
+transCondExpr :: [(Expression, Expression)] -> StaticEnvironment
+              -> TranslateResult
+transCondExpr pairs senv =
+  NamelessCondExpr . reverse <$> foldl func (return []) pairs
+  where
+    func :: Try [(NamelessExpression, NamelessExpression)]
+         -> (Expression, Expression)
+         -> Try [(NamelessExpression, NamelessExpression)]
+    func acc (e1, e2) = do
+      pairs <- acc
+      nlE1 <- translate e1 senv
+      nlE2 <- translate e2 senv
+      return $ (nlE1, nlE2):pairs

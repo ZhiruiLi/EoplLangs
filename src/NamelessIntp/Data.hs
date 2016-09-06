@@ -60,6 +60,7 @@ data NamelessExpression =
   | NamelessUnaryOpExpr UnaryOp NamelessExpression
   | NamelessIfExpr NamelessExpression NamelessExpression NamelessExpression
   | NamelessCallExpr NamelessExpression NamelessExpression
+  | NamelessCondExpr [(NamelessExpression, NamelessExpression)]
 
 data Program = Prog Expression
   deriving (Show, Eq)
@@ -73,6 +74,7 @@ data Expression =
   | IfExpr Expression Expression Expression
   | ProcExpr String Expression
   | CallExpr Expression Expression
+  | CondExpr [(Expression, Expression)]
   deriving(Show, Eq)
 
 data BinOp =

@@ -39,7 +39,7 @@ keyWord w = string w *> notFollowedBy alphaNumChar *> spaceConsumer
 reservedWords :: [String]
 reservedWords  =
   [ "let", "in", "if", "then", "else", "zero?", "minus", "equal?", "greater?"
-  , "less?", "proc"
+  , "less?", "proc", "cond", "end"
   ]
 
 binOpsMap :: [(String, BinOp)]
@@ -132,6 +132,7 @@ letExpr = do
   body <- expression
   return $ LetExpr var val body
 
+-- | ProcExpr ::= proc (Identifier) = Expression
 procExpr :: Parser Expression
 procExpr = do
   _ <- keyWord "proc"
@@ -139,11 +140,25 @@ procExpr = do
   body <- expression
   return $ ProcExpr param body
 
+-- | CallExpr ::= (Expression Expression)
 callExpr :: Parser Expression
 callExpr = parens $ do
   rator <- expression
   rand <- expression
   return $ CallExpr rator rand
+
+
+-- | CondExpr ::= cond {Expression ==> Expression}* end
+condExpr :: Parser Expression
+condExpr = do
+  _ <- keyWord "cond"
+  pairs <- many pair
+  return $ CondExpr pairs
+  where
+    pair = do e1 <- expression
+              _ <- longArrow
+              e2 <- expression
+              return (e1, e2)
 
 -- | Expression ::= ConstExpr
 --              ::= BinOpExpr
@@ -153,6 +168,7 @@ callExpr = parens $ do
 --              ::= LetExpr
 --              ::= ProcExpr
 --              ::= CallExpr
+--              ::= CondExpr
 expression :: Parser Expression
 expression = try constExpr
          <|> try binOpExpr
@@ -162,6 +178,7 @@ expression = try constExpr
          <|> try letExpr
          <|> try procExpr
          <|> try callExpr
+         <|> try condExpr
 
 program :: Parser Program
 program = do

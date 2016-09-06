@@ -101,24 +101,22 @@ evalUnaryOpExpr :: UnaryOp
                 -> NamelessExpression
                 -> NamelessEnvironment
                 -> EvaluateResult
-evalUnaryOpExpr op expr env =
-  case valueOf expr env of
-    msg@(Left _) -> msg
-    (Right val) ->
-      case ( lookup op unaryNumToNumOpMap
-           , lookup op unaryNumToBoolOpMap
-           , lookup op unaryBoolOpMap
-           ) of
-        (Just func, _, _) -> case val of
-          (ExprNum n) -> Right . ExprNum $ func n
-          _           -> opError "number" op val
-        (_, Just func, _) -> case val of
-          (ExprNum n) -> Right . ExprBool $ func n
-          _           -> opError "number" op val
-        (_, _, Just func) -> case val of
-          (ExprBool b) -> Right . ExprBool $ func b
-          _            -> opError "boolean value" op val
-        _ -> invalidOpError op
+evalUnaryOpExpr op expr env = do
+  val <- valueOf expr env
+  case ( lookup op unaryNumToNumOpMap
+       , lookup op unaryNumToBoolOpMap
+       , lookup op unaryBoolOpMap
+       ) of
+    (Just func, _, _) -> case val of
+      (ExprNum n) -> Right . ExprNum $ func n
+      _           -> opError "number" op val
+    (_, Just func, _) -> case val of
+      (ExprNum n) -> Right . ExprBool $ func n
+      _           -> opError "number" op val
+    (_, _, Just func) -> case val of
+      (ExprBool b) -> Right . ExprBool $ func b
+      _            -> opError "boolean value" op val
+    _ -> invalidOpError op
   where
     opError typeName op val = Left $ concat
       [ "Operand of ", show op , " operator "
@@ -131,15 +129,18 @@ evalIfExpr :: NamelessExpression
            -> NamelessExpression
            -> NamelessEnvironment
            -> EvaluateResult
-evalIfExpr ifE thenE elseE env = case valueOf ifE env of
-  Left msg -> Left msg
-  Right (ExprBool b) -> valueOf (if b then thenE else elseE) env
-  Right v -> Left $
-    "Predicate expression should be boolean, but got: "
-    `mappend` show v
+evalIfExpr ifE thenE elseE env = do
+  val <- valueOf ifE env
+  b <- checkBool val
+  valueOf (if b then thenE else elseE) env
+  where
+    checkBool (ExprBool b) = return b
+    checkBool notBool = Left $
+      "Predicate expression should be boolean, but got: "
+      `mappend` show notBool
 
 evalProcExpr :: NamelessExpression -> NamelessEnvironment -> EvaluateResult
-evalProcExpr body env = Right $ ExprProc body env
+evalProcExpr body env = return $ ExprProc body env
 
 evalLetExpr :: NamelessExpression
             -> NamelessExpression
