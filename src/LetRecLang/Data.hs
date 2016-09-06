@@ -3,6 +3,8 @@ module LetRecLang.Data where
 import qualified Data.Map   as M
 import           Data.Maybe (fromMaybe)
 
+type Try = Either String
+
 -- | This implementation (together with applySafe') is inefficient,
 -- as it build a new closure every time the procedure is retrived.
 -- Use lazy evaluation, we can have a better solution

@@ -8,7 +8,11 @@ module LetRecLang.Evaluator
 import           LetRecLang.Data
 import           LetRecLang.Parser
 
-type EvaluateResult = Either String ExpressedValue
+type EvaluateResult = Try ExpressedValue
+
+liftMaybe :: a -> Maybe b -> Either a b
+liftMaybe _ (Just x) = Right x
+liftMaybe y Nothing  = Left y
 
 run :: String -> EvaluateResult
 run input = parseProgram input >>= evalProgram
@@ -35,9 +39,8 @@ evalConstExpr :: ExpressedValue -> EvaluateResult
 evalConstExpr = Right
 
 evalVarExpr :: String -> Environment -> EvaluateResult
-evalVarExpr var env = case applySafe env var of
-  Nothing  -> Left $ "Not in scope: " `mappend` var
-  Just val -> Right val
+evalVarExpr var env =
+  liftMaybe ("Not in scope: " `mappend` var) (applySafe env var)
 
 evalLetRecExpr :: [(String, [String], Expression)] -> Expression -> Environment
                -> EvaluateResult
@@ -64,28 +67,24 @@ unaryNumToBoolOpMap = [(IsZero, (0 ==))]
 
 evalBinOpExpr :: BinOp -> Expression -> Expression -> Environment
               -> EvaluateResult
-evalBinOpExpr op expr1 expr2 env =
-  case (wrapVal1, wrapVal2) of
-    (msg@(Left _), _) -> msg
-    (_, msg@(Left _)) -> msg
-    (Right val1, Right val2) ->
-      case ( lookup op binNumToNumOpMap
-           , lookup op binNumToBoolOpMap
-           , lookup op binBoolOpMap
-           ) of
-        (Just func, _, _) -> case (val1, val2) of
-          (ExprNum n1, ExprNum n2) -> Right . ExprNum $ func n1 n2
-          (a, b)                   -> opError "number" op a b
-        (_, Just func, _) -> case (val1, val2) of
-          (ExprNum n1, ExprNum n2) -> Right . ExprBool $ func n1 n2
-          (a, b)                   -> opError "number" op a b
-        (_, _, Just func) -> case (val1, val2) of
-          (ExprBool b1, ExprBool b2) -> Right . ExprBool $ func b1 b2
-          (a, b)                     -> opError "boolean value" op a b
-        _ -> invalidOpError op
+evalBinOpExpr op expr1 expr2 env = do
+  val1 <- valueOf expr1 env
+  val2 <- valueOf expr2 env
+  case ( lookup op binNumToNumOpMap
+       , lookup op binNumToBoolOpMap
+       , lookup op binBoolOpMap
+       ) of
+    (Just func, _, _) -> case (val1, val2) of
+      (ExprNum n1, ExprNum n2) -> return . ExprNum $ func n1 n2
+      (a, b)                   -> opError "number" op a b
+    (_, Just func, _) -> case (val1, val2) of
+      (ExprNum n1, ExprNum n2) -> return . ExprBool $ func n1 n2
+      (a, b)                   -> opError "number" op a b
+    (_, _, Just func) -> case (val1, val2) of
+      (ExprBool b1, ExprBool b2) -> return . ExprBool $ func b1 b2
+      (a, b)                     -> opError "boolean value" op a b
+    _ -> invalidOpError op
   where
-    wrapVal1 = valueOf expr1 env
-    wrapVal2 = valueOf expr2 env
     opError typeName op a b = Left $ concat
       [ "Operands of binary ", show op, " operator "
       , "should both be ", typeName, "s, but got: "
@@ -96,24 +95,22 @@ invalidOpError op = error $ "Invalid operator: " `mappend` show op
 
 evalUnaryOpExpr :: UnaryOp -> Expression -> Environment
                 -> EvaluateResult
-evalUnaryOpExpr op expr env =
-  case valueOf expr env of
-    msg@(Left _) -> msg
-    (Right val) ->
-      case ( lookup op unaryNumToNumOpMap
-           , lookup op unaryNumToBoolOpMap
-           , lookup op unaryBoolOpMap
-           ) of
-        (Just func, _, _) -> case val of
-          (ExprNum n) -> Right . ExprNum $ func n
-          _           -> opError "number" op val
-        (_, Just func, _) -> case val of
-          (ExprNum n) -> Right . ExprBool $ func n
-          _           -> opError "number" op val
-        (_, _, Just func) -> case val of
-          (ExprBool b) -> Right . ExprBool $ func b
-          _            -> opError "boolean value" op val
-        _ -> invalidOpError op
+evalUnaryOpExpr op expr env = do
+  val <- valueOf expr env
+  case ( lookup op unaryNumToNumOpMap
+       , lookup op unaryNumToBoolOpMap
+       , lookup op unaryBoolOpMap
+       ) of
+    (Just func, _, _) -> case val of
+      (ExprNum n) -> Right . ExprNum $ func n
+      _           -> opError "number" op val
+    (_, Just func, _) -> case val of
+      (ExprNum n) -> Right . ExprBool $ func n
+      _           -> opError "number" op val
+    (_, _, Just func) -> case val of
+      (ExprBool b) -> Right . ExprBool $ func b
+      _            -> opError "boolean value" op val
+    _ -> invalidOpError op
   where
     opError typeName op val = Left $ concat
       [ "Operand of ", show op , " operator "
@@ -123,66 +120,63 @@ evalUnaryOpExpr op expr env =
 
 evalCondExpr :: [(Expression, Expression)] -> Environment -> EvaluateResult
 evalCondExpr [] _ = Left "No predicate is true"
-evalCondExpr ((e1, e2):pairs) env = case valueOf e1 env of
-  Left msg -> Left msg
-  Right (ExprBool True) -> valueOf e2 env
-  Right (ExprBool False) -> evalCondExpr pairs env
-  Right v -> Left $
-    "Predicate expression should be boolean, but got: "
-    `mappend` show v
+evalCondExpr ((e1, e2):pairs) env = do
+  val <- valueOf e1 env
+  case val of
+    ExprBool True -> valueOf e2 env
+    ExprBool False -> evalCondExpr pairs env
+    _ -> Left $
+      "Predicate expression should be boolean, but got: "
+      `mappend` show val
 
 evalLetExpr :: [(String, Expression)] -> Expression -> Environment
             -> EvaluateResult
-evalLetExpr bindings body env = case evaledBindings of
-  Left msg    -> Left msg
-  Right pairs -> valueOf body $ extendMany pairs env
+evalLetExpr bindings body env = do
+  bindVals <- evaledBindings
+  valueOf body $ extendMany bindVals env
   where
-    func :: Either String [(String, ExpressedValue)]
-         -> (String, Expression)
-         -> Either String [(String, ExpressedValue)]
-    func left@(Left _) _ = left
-    func (Right pairs) (var, expr) = case valueOf expr env of
-      Left msg  -> Left msg
-      Right val -> Right $ (var, val):pairs
-    evaledBindings :: Either String [(String, ExpressedValue)]
-    evaledBindings = case foldl func (Right []) bindings of
-      left@(Left _) -> left
-      Right pairs   -> Right $ reverse pairs
+    func maybeBindVals (name, expr) = do
+      pairs <- maybeBindVals
+      val <- valueOf expr env
+      return $ (name, val):pairs
+    evaledBindings = do
+      pairs <- foldl func (return []) bindings
+      return $ reverse pairs
 
 evalLetStarExpr :: [(String, Expression)] -> Expression -> Environment
                 -> EvaluateResult
 evalLetStarExpr [] body env = valueOf body env
-evalLetStarExpr ((var, expr):pairs) body env = case valueOf expr env of
-  Left msg  -> Left msg
-  Right val -> evalLetStarExpr pairs body (extend var val env)
+evalLetStarExpr ((var, expr):pairs) body env = do
+  val <- valueOf expr env
+  evalLetStarExpr pairs body (extend var val env)
 
 evalProcExpr :: [String] -> Expression -> Environment -> EvaluateResult
-evalProcExpr params body env = Right $ ExprProc params body env
+evalProcExpr params body env = return $ ExprProc params body env
 
 evalCallExpr :: Expression -> [Expression] -> Environment -> EvaluateResult
-evalCallExpr rator rand env = case valueOf rator env of
-  Left msg -> Left msg
-  Right (ExprProc params body savedEnv) -> case maybeArgs of
-    Left msg   -> Left msg
-    Right args -> applyProcedure params body savedEnv args
-  Right noProc -> Left $
-    "Operator of call expression should be procedure, but got: "
-    `mappend` show noProc
+evalCallExpr rator rand env = do
+  rator <- valueOf rator env
+  content <- checkProc rator
+  args <- maybeArgs
+  applyProcedure content args
   where
-    func :: Either String [ExpressedValue]
-         -> Either String ExpressedValue
-         -> Either String [ExpressedValue]
-    func acc maybeArg = case (acc, maybeArg) of
-      (Right args, Right arg) -> Right (arg : args)
-      (Left msg, _)           -> Left msg
-      (_, Left msg)           -> Left msg
-    maybeArgs :: Either String [ExpressedValue]
+    checkProc :: ExpressedValue -> Try ([String], Expression, Environment)
+    checkProc (ExprProc params body savedEnv) = Right (params, body, savedEnv)
+    checkProc noProc = Left $
+      "Operator of call expression should be procedure, but got: "
+      `mappend` show noProc
+    func :: Try [ExpressedValue] -> Try ExpressedValue -> Try [ExpressedValue]
+    func maybeArgs maybeArg = do
+      args <- maybeArgs
+      arg <- maybeArg
+      return $ arg:args
+    maybeArgs :: Try [ExpressedValue]
     maybeArgs = reverse <$>
-      foldl func (Right []) (fmap (`valueOf` env) rand)
-    applyProcedure :: [String] -> Expression -> Environment
+      foldl func (return []) (fmap (`valueOf` env) rand)
+    applyProcedure :: ([String], Expression, Environment)
                    -> [ExpressedValue]
                    -> EvaluateResult
-    applyProcedure params body savedEnv args =
+    applyProcedure (params, body, savedEnv) args =
       applyProcedure' params body savedEnv args []
     applyProcedure' :: [String] -> Expression -> Environment
                     -> [ExpressedValue]
@@ -197,4 +191,3 @@ evalCallExpr rator rand env = case valueOf rator env of
       if p `elem` usedParams
         then Left $ "Parameter name conflict: " `mappend` p
         else applyProcedure' ps body (extend p a env) as (p:usedParams)
-
