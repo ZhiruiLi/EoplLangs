@@ -39,7 +39,7 @@ keyWord w = string w *> notFollowedBy alphaNumChar *> spaceConsumer
 reservedWords :: [String]
 reservedWords  =
   [ "let", "in", "if", "then", "else", "zero?", "minus", "equal?", "greater?"
-  , "less?", "proc", "cond", "end"
+  , "less?", "proc", "cond", "end", "letrec"
   ]
 
 binOpsMap :: [(String, BinOp)]
@@ -161,6 +161,18 @@ condExpr = do
               e2 <- expression
               return (e1, e2)
 
+-- | LetRecExpr ::= letrec Identifier (Identifier) = Expression in Expression
+letRecExpr :: Parser Expression
+letRecExpr = do
+  _ <- keyWord "letrec"
+  procName <- identifier
+  param <- parens identifier
+  _ <- equal
+  procBody <- expression
+  _ <- keyWord "in"
+  body <- expression
+  return $ LetRecExpr procName param procBody body
+
 -- | Expression ::= ConstExpr
 --              ::= BinOpExpr
 --              ::= UnaryOpExpr
@@ -180,6 +192,7 @@ expression = try constExpr
          <|> try procExpr
          <|> try callExpr
          <|> try condExpr
+         <|> try letRecExpr
 
 program :: Parser Program
 program = do

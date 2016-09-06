@@ -77,6 +77,7 @@ data Expression =
   | ProcExpr String Expression
   | CallExpr Expression Expression
   | CondExpr [(Expression, Expression)]
+  | LetRecExpr String String Expression Expression
   deriving(Show, Eq)
 
 data BinOp =

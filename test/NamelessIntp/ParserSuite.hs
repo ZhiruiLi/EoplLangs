@@ -105,6 +105,11 @@ testLetExpr = TestList
   [ testEq "Parse let expression with 1 binding"
            (LetExpr "bar" (constNum 1) (VarExpr "bar"))
            "let bar = 1 in bar"
+  , testEq "Parse let rec expression"
+           (LetRecExpr "foo" "bar"
+                       (constNum 3)
+                       (CallExpr (VarExpr "foo") (constNum 5)))
+           "letrec foo(bar) = 3 in (foo 5)"
   ]
 
 testExpression :: Test
