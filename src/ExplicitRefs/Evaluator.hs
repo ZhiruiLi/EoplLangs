@@ -68,7 +68,6 @@ evalDeRefExpr expr env = do
       "Operand of deref should be reference value, but got: "
       `mappend` show val
 
-
 evalConstExpr :: ExpressedValue -> EvaluateResult
 evalConstExpr = return
 
@@ -131,7 +130,7 @@ evalUnaryOpExpr :: UnaryOp -> Expression -> Environment
                 -> EvaluateResult
 evalUnaryOpExpr op expr env = do
   val <- valueOf expr env
-  case (lookup op unaryNumToNumOpMap
+  case ( lookup op unaryNumToNumOpMap
        , lookup op unaryNumToBoolOpMap
        , lookup op unaryBoolOpMap
        ) of
@@ -184,6 +183,7 @@ evalCallExpr ratorExpr randExpr env = do
   rand <- valueOf randExpr env
   applyProcedure content rand
   where
+    checkProc :: ExpressedValue -> StatedTry (String, Expression, Environment)
     checkProc (ExprProc name body savedEnv) = return (name, body, savedEnv)
     checkProc noProc = throwError $
       "Operator of call expression should be procedure, but got: "
