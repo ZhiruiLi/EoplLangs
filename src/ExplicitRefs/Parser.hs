@@ -154,7 +154,7 @@ letRecExpr = do
   where
     procBinding = try $ do
       procName <- identifier
-      params <- parens $ sepBy identifier comma
+      params <- parens $ many identifier
       _ <- equal
       procBody <- expression
       return (procName, params, procBody)
@@ -188,7 +188,7 @@ condExpr = do
 procExpr :: Parser Expression
 procExpr = do
   _ <- keyWord "proc"
-  params <- parens $ sepBy identifier comma
+  params <- parens $ many identifier
   body <- expression
   return $ ProcExpr params body
 
