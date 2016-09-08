@@ -39,7 +39,7 @@ keyWord w = string w *> notFollowedBy alphaNumChar *> spaceConsumer
 
 reservedWords :: [String]
 reservedWords  =
-  [ "let*", "let", "in", "if", "then", "else", "zero?", "minus"
+  [ "let", "in", "if", "then", "else", "zero?", "minus"
   , "equal?", "greater?", "less?", "cond", "end", "proc", "letrec"
   , "begin", "newref", "deref", "setref", "list"
   ]
