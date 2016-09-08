@@ -17,11 +17,11 @@ initEnvironment = M.fromList
 extend :: String -> ExpressedValue -> Environment -> Environment
 extend = M.insert
 
-extendRec :: String -> String -> Expression -> Environment -> Environment
-extendRec name param body env = newEnv
-  where newEnv = extend name (ExprProc param body newEnv) env
+extendRec :: String -> [String] -> Expression -> Environment -> Environment
+extendRec name params body env = newEnv
+  where newEnv = extend name (ExprProc params body newEnv) env
 
-extendRecMany :: [(String, String, Expression)] -> Environment -> Environment
+extendRecMany :: [(String, [String], Expression)] -> Environment -> Environment
 extendRecMany triples env = newEnv
   where
     newEnv =
@@ -94,9 +94,9 @@ data Expression =
   | BinOpExpr BinOp Expression Expression
   | UnaryOpExpr UnaryOp Expression
   | CondExpr [(Expression, Expression)]
-  | ProcExpr String Expression
-  | CallExpr Expression Expression
-  | LetRecExpr [(String, String, Expression)] Expression
+  | ProcExpr [String] Expression
+  | CallExpr Expression [Expression]
+  | LetRecExpr [(String, [String], Expression)] Expression
   | BeginExpr [Expression]
   | NewRefExpr Expression
   | DeRefExpr Expression
@@ -113,7 +113,7 @@ data UnaryOp = Minus | IsZero
 
 data ExpressedValue = ExprNum Integer
                     | ExprBool Bool
-                    | ExprProc String Expression Environment
+                    | ExprProc [String] Expression Environment
                     | ExprRef Ref
                     | ExprList [ExpressedValue]
 

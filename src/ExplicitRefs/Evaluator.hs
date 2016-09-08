@@ -35,7 +35,7 @@ valueOf (UnaryOpExpr op expr) env      = evalUnaryOpExpr op expr env
 valueOf (CondExpr pairs) env           = evalCondExpr pairs env
 valueOf (LetExpr bindings body) env    = evalLetExpr bindings body env
 valueOf (ProcExpr params body) env     = evalProcExpr params body env
-valueOf (CallExpr rator rand) env      = evalCallExpr rator rand env
+valueOf (CallExpr rator rands) env     = evalCallExpr rator rands env
 valueOf (NewRefExpr expr) env          = evalNewRefExpr expr env
 valueOf (DeRefExpr expr) env           = evalDeRefExpr expr env
 valueOf (SetRefExpr expr1 expr2) env   = evalSetRefExpr expr1 expr2 env
@@ -79,14 +79,17 @@ evalBeginExpr exprs env = foldl func (return $ ExprBool False) exprs
       _ <- acc
       valueOf ele env
 
-evalListExpr :: [Expression] -> Environment -> EvaluateResult
-evalListExpr lst env = ExprList . reverse <$> evaledList
+evalExpressionList :: [Expression] -> Environment -> StatedTry [ExpressedValue]
+evalExpressionList lst env = reverse <$> evaledList
   where
     func acc expr = do
       lst <- acc
       ele <- valueOf expr env
       return $ ele:lst
     evaledList = foldl func (return []) lst
+
+evalListExpr :: [Expression] -> Environment -> EvaluateResult
+evalListExpr lst env = ExprList <$> evalExpressionList lst env
 
 evalConstExpr :: ExpressedValue -> EvaluateResult
 evalConstExpr = return
@@ -95,7 +98,7 @@ evalVarExpr :: String -> Environment -> EvaluateResult
 evalVarExpr var env =
   liftMaybe ("Not in scope: " `mappend` var) (applySafe env var)
 
-evalLetRecExpr :: [(String, String, Expression)] -> Expression -> Environment
+evalLetRecExpr :: [(String, [String], Expression)] -> Expression -> Environment
                -> EvaluateResult
 evalLetRecExpr procsSubUnits recBody env =
   valueOf recBody $ extendRecMany procsSubUnits env
@@ -193,23 +196,29 @@ evalLetExpr bindExprs body env = do
       val <- valueOf expr env
       evalBindExprs ((name, val):bvs) bes
 
-evalProcExpr :: String -> Expression -> Environment -> EvaluateResult
-evalProcExpr param body env = return $ ExprProc param body env
+evalProcExpr :: [String] -> Expression -> Environment -> EvaluateResult
+evalProcExpr params body env = return $ ExprProc params body env
 
-evalCallExpr :: Expression -> Expression -> Environment -> EvaluateResult
-evalCallExpr ratorExpr randExpr env = do
+evalCallExpr :: Expression -> [Expression] -> Environment -> EvaluateResult
+evalCallExpr ratorExpr randExprs env = do
   rator <- valueOf ratorExpr env
   content <- checkProc rator
-  rand <- valueOf randExpr env
-  applyProcedure content rand
+  rands <- evalExpressionList randExprs env
+  applyProcedure content rands
   where
-    checkProc :: ExpressedValue -> StatedTry (String, Expression, Environment)
-    checkProc (ExprProc name body savedEnv) = return (name, body, savedEnv)
+    checkProc :: ExpressedValue -> StatedTry ([String], Expression, Environment)
+    checkProc (ExprProc params body savedEnv) = return (params, body, savedEnv)
     checkProc noProc = throwError $
       "Operator of call expression should be procedure, but got: "
       `mappend` show noProc
-    applyProcedure :: (String, Expression, Environment) -> ExpressedValue
+    safeZip :: [a] -> [b] -> StatedTry [(a, b)]
+    safeZip [] []         = return []
+    safeZip (_:_) []      = throwError "Not enough arguments!"
+    safeZip [] (_:_)      = throwError "Too many arguments!"
+    safeZip (x:xs) (y:ys) = ((x, y):) <$> safeZip xs ys
+    applyProcedure :: ([String], Expression, Environment) -> [ExpressedValue]
                    -> EvaluateResult
-    applyProcedure (param, body, savedEnv) rand =
-      valueOf body (extend param rand savedEnv)
+    applyProcedure (params, body, savedEnv) rands = do
+      pairs <- safeZip params rands
+      valueOf body (extendMany pairs savedEnv)
 

@@ -154,10 +154,10 @@ letRecExpr = do
   where
     procBinding = try $ do
       procName <- identifier
-      param <- parens identifier
+      params <- parens $ sepBy identifier comma
       _ <- equal
       procBody <- expression
-      return (procName, param, procBody)
+      return (procName, params, procBody)
 
 
 -- | ManyExprs ::= <empty>
@@ -188,16 +188,16 @@ condExpr = do
 procExpr :: Parser Expression
 procExpr = do
   _ <- keyWord "proc"
-  param <- parens identifier
+  params <- parens $ sepBy identifier comma
   body <- expression
-  return $ ProcExpr param body
+  return $ ProcExpr params body
 
 -- | CallExpr ::= (Expression {Expression}*)
 callExpr :: Parser Expression
 callExpr = parens $ do
   rator <- expression
-  rand <- expression
-  return $ CallExpr rator rand
+  rands <- many expression
+  return $ CallExpr rator rands
 
 -- | BeginExpr ::= begin BeginBody end
 --
