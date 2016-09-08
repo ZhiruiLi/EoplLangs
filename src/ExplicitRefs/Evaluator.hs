@@ -40,6 +40,7 @@ valueOf (NewRefExpr expr) env          = evalNewRefExpr expr env
 valueOf (DeRefExpr expr) env           = evalDeRefExpr expr env
 valueOf (SetRefExpr expr1 expr2) env   = evalSetRefExpr expr1 expr2 env
 valueOf (BeginExpr exprs) env          = evalBeginExpr exprs env
+valueOf (ListExpr exprs) env           = evalListExpr exprs env
 
 evalSetRefExpr :: Expression -> Expression -> Environment -> EvaluateResult
 evalSetRefExpr expr1 expr2 env = do
@@ -77,6 +78,15 @@ evalBeginExpr exprs env = foldl func (return $ ExprBool False) exprs
     func acc ele = do
       _ <- acc
       valueOf ele env
+
+evalListExpr :: [Expression] -> Environment -> EvaluateResult
+evalListExpr lst env = ExprList . reverse <$> evaledList
+  where
+    func acc expr = do
+      lst <- acc
+      ele <- valueOf expr env
+      return $ ele:lst
+    evaledList = foldl func (return []) lst
 
 evalConstExpr :: ExpressedValue -> EvaluateResult
 evalConstExpr = return

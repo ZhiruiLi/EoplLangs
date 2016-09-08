@@ -41,7 +41,7 @@ reservedWords :: [String]
 reservedWords  =
   [ "let*", "let", "in", "if", "then", "else", "zero?", "minus"
   , "equal?", "greater?", "less?", "cond", "end", "proc", "letrec"
-  , "begin", "newref", "deref", "setref"
+  , "begin", "newref", "deref", "setref", "list"
   ]
 
 binOpsMap :: [(String, BinOp)]
@@ -240,6 +240,17 @@ setRefExpr = do
       e2 <- expression
       return (e1, e2)
 
+-- | ListExpr ::= list(ListBody)
+--   ListBody ::= <empty>
+--            ::= Expression ListBodyTail
+--   ListBodyTail ::= <empty>
+--                ::= ,Expression ListBodyTail
+listExpr :: Parser Expression
+listExpr = do
+  _ <- keyWord "list"
+  body <- parens $ sepBy expression comma
+  return $ ListExpr body
+
 -- | Expression ::= ConstExpr
 --              ::= BinOpExpr
 --              ::= UnaryOpExpr
@@ -268,6 +279,7 @@ expression = try constExpr
          <|> try newRefExpr
          <|> try deRefExpr
          <|> try setRefExpr
+         <|> try listExpr
 
 program :: Parser Program
 program = do

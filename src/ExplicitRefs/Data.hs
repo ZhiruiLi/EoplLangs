@@ -101,6 +101,7 @@ data Expression =
   | NewRefExpr Expression
   | DeRefExpr Expression
   | SetRefExpr Expression Expression
+  | ListExpr [Expression]
   deriving(Show, Eq)
 
 data BinOp =
@@ -114,17 +115,28 @@ data ExpressedValue = ExprNum Integer
                     | ExprBool Bool
                     | ExprProc String Expression Environment
                     | ExprRef Ref
+                    | ExprList [ExpressedValue]
 
 instance Show ExpressedValue where
-  show (ExprNum i)  = show i
-  show (ExprBool b) = show b
-  show ExprProc{}   = "<procedure>"
-  show (ExprRef v)  = show v
+  show (ExprNum i)    = show i
+  show (ExprBool b)   = show b
+  show ExprProc{}     = "<procedure>"
+  show (ExprRef v)    = show v
+  show (ExprList lst) = showValList lst
+
+showValList :: [ExpressedValue] -> String
+showValList lst = concat ["(", body lst ,")"]
+  where
+    bodyTail = concatMap (\val -> " " `mappend` show val)
+    body []     = ""
+    body [x]    = show x
+    body (x:xs) = show x `mappend` bodyTail xs
 
 instance Eq ExpressedValue where
   (ExprNum i1) == (ExprNum i2) = i1 == i2
   (ExprBool b1) == (ExprBool b2) = b1 == b2
   (ExprRef v1) == (ExprRef v2) = v1 == v2
+  (ExprList l1) == (ExprList l2) = l1 == l2
   _ == _ = False
 
 data DenotedValue = DenoVal ExpressedValue
