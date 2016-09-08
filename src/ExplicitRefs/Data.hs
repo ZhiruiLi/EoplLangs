@@ -45,7 +45,7 @@ apply env var = fromMaybe
 
 newtype Ref = Ref { addr::Integer } deriving(Show, Eq)
 
-newtype Store = Store { refs::[ExpressedValue] }
+newtype Store = Store { refs::[ExpressedValue] } deriving(Show)
 
 type StatedTry = StateT Store (Either String)
 
@@ -83,7 +83,7 @@ setRef ref val = do
   where
     setRefVal _ [] _       = throwError "Index out of bound when calling setref!"
     setRefVal 0 (_:xs) val = return (val:xs)
-    setRefVal i (_:xs) val = setRefVal (i - 1) xs val
+    setRefVal i (x:xs) val = (x:) <$> setRefVal (i - 1) xs val
 data Program = Prog Expression
   deriving (Show, Eq)
 

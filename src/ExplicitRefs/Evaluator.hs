@@ -39,6 +39,7 @@ valueOf (CallExpr rator rand) env      = evalCallExpr rator rand env
 valueOf (NewRefExpr expr) env          = evalNewRefExpr expr env
 valueOf (DeRefExpr expr) env           = evalDeRefExpr expr env
 valueOf (SetRefExpr expr1 expr2) env   = evalSetRefExpr expr1 expr2 env
+valueOf (BeginExpr exprs) env          = evalBeginExpr exprs env
 
 evalSetRefExpr :: Expression -> Expression -> Environment -> EvaluateResult
 evalSetRefExpr expr1 expr2 env = do
@@ -67,6 +68,15 @@ evalDeRefExpr expr env = do
     _ -> throwError $
       "Operand of deref should be reference value, but got: "
       `mappend` show val
+
+evalBeginExpr :: [Expression] -> Environment -> EvaluateResult
+evalBeginExpr [] env = throwError
+  "begin expression should at least have one sub expression"
+evalBeginExpr exprs env = foldl func (return $ ExprBool False) exprs
+  where
+    func acc ele = do
+      _ <- acc
+      valueOf ele env
 
 evalConstExpr :: ExpressedValue -> EvaluateResult
 evalConstExpr = return

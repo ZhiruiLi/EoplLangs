@@ -209,7 +209,7 @@ callExpr = parens $ do
 beginExpr :: Parser Expression
 beginExpr = do
   _ <- keyWord "begin"
-  exprs <- sepBy (try expression) semiColon
+  exprs <- sepBy1 (try expression) semiColon
   _ <- keyWord "end"
   return $ BeginExpr exprs
 

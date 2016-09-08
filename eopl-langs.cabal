@@ -34,6 +34,10 @@ library
                      , NamelessIntp.Parser
                      , NamelessIntp.Translator
                      
+                     , ExplicitRefs.Data
+                     , ExplicitRefs.Evaluator
+                     , ExplicitRefs.Parser
+                     
   build-depends:       base 
                      , megaparsec
                      , containers
