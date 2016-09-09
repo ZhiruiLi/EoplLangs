@@ -6,6 +6,7 @@ module Repl
 import           Data.Char              (isSpace)
 import           Data.Maybe             (fromMaybe)
 import qualified ExplicitRefs.Evaluator as ExplicitRefs
+import qualified ImplicitRefs.Evaluator as ImplicitRefs
 import qualified LetLang.Evaluator      as LetLang
 import qualified LetRecLang.Evaluator   as LetRecLang
 import qualified NamelessIntp.Evaluator as NamelessIntp
@@ -16,7 +17,7 @@ import           Text.Megaparsec.String
 
 data Lang = forall a b. (Show a) => Runnable (String -> Either String a)
 
-defaultLangName = "ExplicitRefs"
+defaultLangName = "ImplicitRefs"
 
 lookupLang :: String -> Maybe Lang
 lookupLang name = lookup name supportedLangs
@@ -42,6 +43,7 @@ supportedLangs =
   , ("LetRecLang", Runnable LetRecLang.run)
   , ("Nameless", Runnable NamelessIntp.run)
   , ("ExplicitRefs", Runnable ExplicitRefs.run)
+  , ("ImplicitRefs", Runnable ImplicitRefs.run)
   ]
 
 flushStr :: String -> IO ()

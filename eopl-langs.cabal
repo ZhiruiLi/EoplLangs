@@ -38,6 +38,10 @@ library
                      , ExplicitRefs.Evaluator
                      , ExplicitRefs.Parser
                      
+                     , ImplicitRefs.Data
+                     , ImplicitRefs.Evaluator
+                     , ImplicitRefs.Parser
+                     
   build-depends:       base 
                      , megaparsec
                      , containers
