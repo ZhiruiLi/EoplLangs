@@ -42,6 +42,10 @@ library
                      , ImplicitRefs.Evaluator
                      , ImplicitRefs.Parser
                      
+                     , MutablePairs.Data
+                     , MutablePairs.Evaluator
+                     , MutablePairs.Parser
+                     
   build-depends:       base 
                      , megaparsec
                      , containers
