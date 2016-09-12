@@ -42,9 +42,13 @@ valueOf (AssignExpr name expr) env     = evalAssignExpr name expr env
 evalAssignExpr :: String -> Expression -> Environment -> EvaluateResult
 evalAssignExpr name expr env = do
   val <- valueOf expr env
-  ref <- newRef val
+  ref <- getRef
   _ <- setRef ref val
   return $ ExprBool False
+  where
+    getRef = case applySafe env name of
+      Just (DenoRef ref) -> return ref
+      Nothing            -> throwError $ "Not in scope: " ++ show name
 
 evalBeginExpr :: [Expression] -> Environment -> EvaluateResult
 evalBeginExpr [] env = throwError
