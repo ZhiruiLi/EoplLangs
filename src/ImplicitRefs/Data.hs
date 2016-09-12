@@ -102,6 +102,7 @@ data Expression =
   | LetRecExpr [(String, [String], Expression)] Expression
   | BeginExpr [Expression]
   | AssignExpr String Expression
+  | SetDynamicExpr String Expression Expression
   deriving(Show, Eq)
 
 data BinOp =

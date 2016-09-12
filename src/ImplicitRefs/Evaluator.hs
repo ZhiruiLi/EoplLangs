@@ -38,17 +38,30 @@ valueOf (ProcExpr params body) env     = evalProcExpr params body env
 valueOf (CallExpr rator rands) env     = evalCallExpr rator rands env
 valueOf (BeginExpr exprs) env          = evalBeginExpr exprs env
 valueOf (AssignExpr name expr) env     = evalAssignExpr name expr env
+valueOf (SetDynamicExpr n e b) env     = evalSetDynamicExpr n e b env
+
+evalSetDynamicExpr :: String -> Expression -> Expression -> Environment
+                   -> EvaluateResult
+evalSetDynamicExpr name expr body env = do
+  ref <- getRef env name
+  oldVal <- deRef ref
+  newVal <- valueOf expr env
+  _ <- setRef ref newVal
+  result <- valueOf body env
+  _ <- setRef ref oldVal
+  return result
+
+getRef :: Environment -> String -> StatedTry Ref
+getRef env name = case applySafe env name of
+  Just (DenoRef ref) -> return ref
+  Nothing            -> throwError $ "Not in scope: " ++ show name
 
 evalAssignExpr :: String -> Expression -> Environment -> EvaluateResult
 evalAssignExpr name expr env = do
   val <- valueOf expr env
-  ref <- getRef
+  ref <- getRef env name
   _ <- setRef ref val
   return $ ExprBool False
-  where
-    getRef = case applySafe env name of
-      Just (DenoRef ref) -> return ref
-      Nothing            -> throwError $ "Not in scope: " ++ show name
 
 evalBeginExpr :: [Expression] -> Environment -> EvaluateResult
 evalBeginExpr [] env = throwError

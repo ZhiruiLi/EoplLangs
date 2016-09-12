@@ -41,7 +41,7 @@ reservedWords :: [String]
 reservedWords  =
   [ "let", "in", "if", "then", "else", "zero?", "minus"
   , "equal?", "greater?", "less?", "cond", "end", "proc", "letrec"
-  , "begin", "set"
+  , "begin", "set", "setdynamic", "during"
   ]
 
 binOpsMap :: [(String, BinOp)]
@@ -137,11 +137,7 @@ letFamilyExpr letType builder = do
   body <- expression
   return $ builder bindings body
   where
-    binding = try $ do
-      var <- identifier
-      _ <- equal
-      val <- expression
-      return (var, val)
+    binding = try assignment
 
 -- | LetrecExpr ::= letrec {Identifier (Identifier) = Expression} in Expression
 letRecExpr :: Parser Expression
@@ -213,14 +209,28 @@ beginExpr = do
   _ <- keyWord "end"
   return $ BeginExpr exprs
 
+assignment :: Parser (String, Expression)
+assignment = do
+  name <- identifier
+  _ <- equal
+  expr <- expression
+  return (name, expr)
+
 -- | AssignExpr ::= set Identifier = Expression
 assignExpr :: Parser Expression
 assignExpr = do
   _ <- keyWord "set"
-  name <- identifier
-  _ <- equal
-  expr <- expression
-  return $ AssignExpr name expr
+  assign <- assignment
+  return $ uncurry AssignExpr assign
+
+-- | SetDynamicExpr ::= setdynamic Identifier = Expression during Expression
+setDynamicExpr :: Parser Expression
+setDynamicExpr = do
+  _ <- keyWord "setdynamic"
+  assign <- assignment
+  _ <- keyWord "during"
+  body <- expression
+  return $ uncurry SetDynamicExpr assign body
 
 -- | Expression ::= ConstExpr
 --              ::= BinOpExpr
@@ -234,7 +244,8 @@ assignExpr = do
 --              ::= BeginExpr
 --              ::= NewRefExpr
 --              ::= DeRefExpr
---              ::= SetRefexpr
+--              ::= SetRefExpr
+--              ::= SetDynamicExpr
 expression :: Parser Expression
 expression = try constExpr
          <|> try binOpExpr
@@ -248,6 +259,7 @@ expression = try constExpr
          <|> try letRecExpr
          <|> try beginExpr
          <|> try assignExpr
+         <|> try setDynamicExpr
 
 program :: Parser Program
 program = do
