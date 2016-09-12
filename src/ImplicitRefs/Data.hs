@@ -20,7 +20,7 @@ extend = M.insert
 extendRec :: String -> [String] -> Expression -> Environment
           -> StatedTry Environment
 extendRec name params body env = do
-  ref <- newRef (ExprBool False)
+  ref <- newRef (ExprBool False) -- dummy value false for allocating space
   let newEnv = extend name (DenoRef ref) env
   let proc = ExprProc params body newEnv
   _ <- setRef ref proc
