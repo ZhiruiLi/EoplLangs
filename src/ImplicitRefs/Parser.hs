@@ -247,19 +247,23 @@ setDynamicExpr = do
 --              ::= SetRefExpr
 --              ::= SetDynamicExpr
 expression :: Parser Expression
-expression = try constExpr
-         <|> try binOpExpr
-         <|> try unaryOpExpr
-         <|> try ifExpr
-         <|> try condExpr
-         <|> try varExpr
-         <|> try letExpr
-         <|> try procExpr
-         <|> try callExpr
-         <|> try letRecExpr
-         <|> try beginExpr
-         <|> try assignExpr
-         <|> try setDynamicExpr
+expression = foldl1 (<|>) (fmap try expressionList)
+  where
+    expressionList =
+      [ constExpr
+      , binOpExpr
+      , unaryOpExpr
+      , ifExpr
+      , condExpr
+      , varExpr
+      , letExpr
+      , procExpr
+      , callExpr
+      , letRecExpr
+      , beginExpr
+      , assignExpr
+      , setDynamicExpr
+      ]
 
 program :: Parser Program
 program = do
