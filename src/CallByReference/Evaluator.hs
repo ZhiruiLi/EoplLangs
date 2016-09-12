@@ -197,6 +197,9 @@ evalCallExpr ratorExpr randExprs env = do
   denoRefs <- valueOfOperands randExprs env
   applyProcedure content denoRefs
   where
+    -- | Check if the operand expression is variable expression, if it is,
+    -- refer to the same location, otherwise, evalute the expression and
+    -- create a new reference.
     valueOfOperands :: [Expression] -> Environment -> StatedTry [Ref]
     valueOfOperands [] _ = return []
     valueOfOperands (VarExpr name : exprs) env = do
