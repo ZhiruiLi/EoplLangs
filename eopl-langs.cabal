@@ -46,6 +46,10 @@ library
                      , MutablePairs.Evaluator
                      , MutablePairs.Parser
                      
+                     , CallByReference.Data
+                     , CallByReference.Evaluator
+                     , CallByReference.Parser
+                     
   build-depends:       base 
                      , megaparsec
                      , containers
