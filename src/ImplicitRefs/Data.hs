@@ -19,19 +19,25 @@ extend = M.insert
 
 extendRec :: String -> [String] -> Expression -> Environment
           -> StatedTry Environment
-extendRec name params body env = do
-  ref <- newRef (ExprBool False) -- dummy value false for allocating space
-  let newEnv = extend name (DenoRef ref) env
-  let proc = ExprProc params body newEnv
-  _ <- setRef ref proc
-  return newEnv
+extendRec name params body = extendRecMany [(name, params, body)]
 
 extendRecMany :: [(String, [String], Expression)] -> Environment
               -> StatedTry Environment
-extendRecMany [] env = return env
-extendRecMany ((name, params, body):xs) env = do
-  newEnv <- extendRec name params body env
-  extendRecMany xs newEnv
+extendRecMany lst env = do
+  refs <- allocMany (length lst)
+  let denoVals = fmap DenoRef refs
+  let names = fmap (\(n, _, _) -> n) lst
+  let newEnv = extendMany (zip names denoVals) env
+  extendRecMany' lst refs newEnv
+  where
+    extendRecMany' [] [] env = return env
+    extendRecMany' ((name, params, body):triples) (ref:refs) env = do
+      _ <- setRef ref (ExprProc params body env)
+      extendRecMany' triples refs env
+    allocMany 0 = return []
+    allocMany x = do
+      ref <- newRef (ExprBool False) -- dummy value false for allocating space
+      (ref:) <$> allocMany (x - 1)
 
 applySafe :: Environment -> String -> Maybe DenotedValue
 applySafe = flip M.lookup

@@ -1,4 +1,5 @@
 import qualified ExplicitRefs.Suites as Explicit
+import qualified ImplicitRefs.Suites as Implicit
 import qualified LetLang.Suites      as Let
 import qualified LetRecLang.Suites   as LetRec
 import qualified NamelessIntp.Suites as Nameless
@@ -13,5 +14,6 @@ main = do
     , LetRec.tests
     , Nameless.tests
     , Explicit.tests
+    , Implicit.tests
     ]
   return ()
