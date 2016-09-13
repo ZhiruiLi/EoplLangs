@@ -260,26 +260,32 @@ listExpr = do
 --              ::= LetExpr
 --              ::= ProcExpr
 --              ::= CallExpr
+--              ::= LetRecExpr
 --              ::= BeginExpr
 --              ::= NewRefExpr
 --              ::= DeRefExpr
---              ::= SetRefexpr
+--              ::= SetRefExpr
+--              ::= ListExpr
 expression :: Parser Expression
-expression = try constExpr
-         <|> try binOpExpr
-         <|> try unaryOpExpr
-         <|> try ifExpr
-         <|> try condExpr
-         <|> try varExpr
-         <|> try letExpr
-         <|> try procExpr
-         <|> try callExpr
-         <|> try letRecExpr
-         <|> try beginExpr
-         <|> try newRefExpr
-         <|> try deRefExpr
-         <|> try setRefExpr
-         <|> try listExpr
+expression = foldl1 (<|>) (fmap try expressionList)
+  where
+    expressionList =
+      [ constExpr
+      , binOpExpr
+      , unaryOpExpr
+      , ifExpr
+      , condExpr
+      , varExpr
+      , letExpr
+      , procExpr
+      , callExpr
+      , letRecExpr
+      , beginExpr
+      , newRefExpr
+      , deRefExpr
+      , setRefExpr
+      , listExpr
+      ]
 
 program :: Parser Program
 program = do

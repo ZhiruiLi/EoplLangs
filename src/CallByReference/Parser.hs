@@ -4,9 +4,9 @@ module CallByReference.Parser
 , parseProgram
 ) where
 
+import           CallByReference.Data
 import           Control.Monad          (void)
 import           Data.Maybe             (fromMaybe)
-import           CallByReference.Data
 import           Text.Megaparsec
 import           Text.Megaparsec.Expr
 import qualified Text.Megaparsec.Lexer  as L
@@ -241,10 +241,9 @@ setDynamicExpr = do
 --              ::= LetExpr
 --              ::= ProcExpr
 --              ::= CallExpr
+--              ::= LetRecExpr
 --              ::= BeginExpr
---              ::= NewRefExpr
---              ::= DeRefExpr
---              ::= SetRefExpr
+--              ::= AssignExpr
 --              ::= SetDynamicExpr
 expression :: Parser Expression
 expression = foldl1 (<|>) (fmap try expressionList)

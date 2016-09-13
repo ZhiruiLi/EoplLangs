@@ -183,16 +183,20 @@ letRecExpr = do
 --              ::= CallExpr
 --              ::= CondExpr
 expression :: Parser Expression
-expression = try constExpr
-         <|> try binOpExpr
-         <|> try unaryOpExpr
-         <|> try ifExpr
-         <|> try varExpr
-         <|> try letExpr
-         <|> try procExpr
-         <|> try callExpr
-         <|> try condExpr
-         <|> try letRecExpr
+expression = foldl1 (<|>) (fmap try expressionList)
+  where
+    expressionList =
+      [ constExpr
+      , binOpExpr
+      , unaryOpExpr
+      , ifExpr
+      , varExpr
+      , letExpr
+      , procExpr
+      , callExpr
+      , condExpr
+      , letRecExpr
+      ]
 
 program :: Parser Program
 program = do
