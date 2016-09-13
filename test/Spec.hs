@@ -1,4 +1,5 @@
 import qualified CallByName.Suites      as CallByName
+import qualified CallByNeed.Suites      as CallByNeed
 import qualified CallByReference.Suites as CallByReference
 import qualified ExplicitRefs.Suites    as Explicit
 import qualified ImplicitRefs.Suites    as Implicit
@@ -21,5 +22,6 @@ main = do
     , MutablePairs.tests
     , CallByReference.tests
     , CallByName.tests
+    , CallByNeed.tests
     ]
   return ()

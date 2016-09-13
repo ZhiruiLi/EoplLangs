@@ -54,6 +54,10 @@ library
                      , CallByName.Evaluator
                      , CallByName.Parser
                      
+                     , CallByNeed.Data
+                     , CallByNeed.Evaluator
+                     , CallByNeed.Parser
+                     
   build-depends:       base 
                      , megaparsec
                      , containers

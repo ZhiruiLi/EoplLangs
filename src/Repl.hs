@@ -4,6 +4,7 @@ module Repl
 ) where
 
 import qualified CallByName.Evaluator      as CallByName
+import qualified CallByNeed.Evaluator      as CallByNeed
 import qualified CallByReference.Evaluator as CallByReference
 import           Data.Char                 (isSpace)
 import           Data.Maybe                (fromMaybe)
@@ -20,7 +21,7 @@ import           Text.Megaparsec.String
 
 data Lang = forall a b. (Show a) => Runnable (String -> Either String a)
 
-defaultLangName = "CallByName"
+defaultLangName = "CallByNeed"
 
 lookupLang :: String -> Maybe Lang
 lookupLang name = lookup name supportedLangs
@@ -50,6 +51,7 @@ supportedLangs =
   , ("MutablePairs", Runnable MutablePairs.run)
   , ("CallByReference", Runnable CallByReference.run)
   , ("CallByName", Runnable CallByName.run)
+  , ("CallByNeed", Runnable CallByNeed.run)
   ]
 
 flushStr :: String -> IO ()
