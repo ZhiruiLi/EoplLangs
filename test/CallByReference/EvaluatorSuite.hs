@@ -24,6 +24,7 @@ tests = TestList
   , testLet
   , testCond
   , testProc
+  , testByNameParams
   ]
 
 testLet :: Test
