@@ -32,7 +32,7 @@ extendRecMany lst env = do
   where
     extendRecMany' [] [] env = return env
     extendRecMany' ((name, params, body):triples) (ref:refs) env = do
-      _ <- setRef ref (ExprProc params body env)
+      _ <- setRef ref (ExprProc $ Procedure params body env)
       extendRecMany' triples refs env
     allocMany 0 = return []
     allocMany x = do
@@ -93,6 +93,7 @@ setRef ref val = do
     setRefVal _ [] _       = throwError "Index out of bound when calling setref!"
     setRefVal 0 (_:xs) val = return (val:xs)
     setRefVal i (x:xs) val = (x:) <$> setRefVal (i - 1) xs val
+
 data Program = Prog Expression
   deriving (Show, Eq)
 
@@ -123,16 +124,21 @@ data BinOp =
 data UnaryOp = Minus | IsZero
   deriving(Show, Eq)
 
+data Procedure = Procedure [String] Expression Environment
+
+instance Show Procedure where
+  show _ = "<procedure>"
+
 data ExpressedValue = ExprNum Integer
                     | ExprBool Bool
-                    | ExprProc [String] Expression Environment
+                    | ExprProc Procedure
                     | ExprPair MutPair
 
 instance Show ExpressedValue where
   show (ExprNum i)  = show i
   show (ExprBool b) = show b
   show (ExprPair p) = show p
-  show ExprProc{}   = "<procedure>"
+  show (ExprProc p) = show p
 
 instance Eq ExpressedValue where
   (ExprNum i1) == (ExprNum i2) = i1 == i2

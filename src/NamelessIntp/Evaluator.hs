@@ -140,7 +140,7 @@ checkBool notBool name = Left $ concat
   [ name, " should be boolean, but got: ", show notBool ]
 
 evalProcExpr :: NamelessExpression -> NamelessEnvironment -> EvaluateResult
-evalProcExpr body env = return $ ExprProc body env
+evalProcExpr body env = return . ExprProc $ NamelessProcedure body env
 
 evalLetExpr :: NamelessExpression
             -> NamelessExpression
@@ -156,15 +156,15 @@ evalCallExpr :: NamelessExpression
              -> EvaluateResult
 evalCallExpr rator rand env = do
   ratorVal <- valueOf rator env
-  content <- checkProc ratorVal
+  proc <- checkProc ratorVal
   randVal <- valueOf rand env
-  applyProcedure content randVal
+  applyProcedure proc randVal
   where
-    checkProc (ExprProc body savedEnv) = Right (body, savedEnv)
+    checkProc (ExprProc proc) = Right proc
     checkProc noProc = Left $
       "Operator of call expression should be procedure, "
       `mappend` "but got: " `mappend` show noProc
-    applyProcedure (body, savedEnv) rand =
+    applyProcedure (NamelessProcedure body savedEnv) rand =
       valueOf body (extend rand savedEnv)
 
 evalCondExpr :: [(NamelessExpression, NamelessExpression)]
@@ -181,4 +181,4 @@ evalLetRecExpr :: NamelessExpression -> NamelessExpression
                -> EvaluateResult
 evalLetRecExpr procBody body env = valueOf body (extend proc env)
   where
-    proc = ExprProc procBody (extend proc env)
+    proc = ExprProc $ NamelessProcedure procBody (extend proc env)

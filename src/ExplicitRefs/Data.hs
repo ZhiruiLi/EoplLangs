@@ -19,7 +19,7 @@ extend = M.insert
 
 extendRec :: String -> [String] -> Expression -> Environment -> Environment
 extendRec name params body env = newEnv
-  where newEnv = extend name (ExprProc params body newEnv) env
+  where newEnv = extend name (ExprProc $ Procedure params body newEnv) env
 
 extendRecMany :: [(String, [String], Expression)] -> Environment -> Environment
 extendRecMany triples env = newEnv
@@ -27,7 +27,7 @@ extendRecMany triples env = newEnv
     newEnv =
       extendMany
       (fmap (\(name, params, body) ->
-               (name, ExprProc params body newEnv)) triples)
+               (name, ExprProc $ Procedure params body newEnv)) triples)
       env
 
 applySafe :: Environment -> String -> Maybe ExpressedValue
@@ -84,6 +84,7 @@ setRef ref val = do
     setRefVal _ [] _       = throwError "Index out of bound when calling setref!"
     setRefVal 0 (_:xs) val = return (val:xs)
     setRefVal i (x:xs) val = (x:) <$> setRefVal (i - 1) xs val
+
 data Program = Prog Expression
   deriving (Show, Eq)
 
@@ -111,16 +112,21 @@ data BinOp =
 data UnaryOp = Minus | IsZero
   deriving(Show, Eq)
 
+data Procedure = Procedure [String] Expression Environment
+
+instance Show Procedure where
+  show _ = "<procedure>"
+
 data ExpressedValue = ExprNum Integer
                     | ExprBool Bool
-                    | ExprProc [String] Expression Environment
+                    | ExprProc Procedure
                     | ExprRef Ref
                     | ExprList [ExpressedValue]
 
 instance Show ExpressedValue where
   show (ExprNum i)    = show i
   show (ExprBool b)   = show b
-  show ExprProc{}     = "<procedure>"
+  show (ExprProc p)   = show p
   show (ExprRef v)    = show v
   show (ExprList lst) = showValList lst
 

@@ -197,17 +197,17 @@ evalLetExpr bindExprs body env = do
       evalBindExprs ((name, val):bvs) bes
 
 evalProcExpr :: [String] -> Expression -> Environment -> EvaluateResult
-evalProcExpr params body env = return $ ExprProc params body env
+evalProcExpr params body env = return . ExprProc $ Procedure params body env
 
 evalCallExpr :: Expression -> [Expression] -> Environment -> EvaluateResult
 evalCallExpr ratorExpr randExprs env = do
   rator <- valueOf ratorExpr env
-  content <- checkProc rator
+  proc <- checkProc rator
   rands <- evalExpressionList randExprs env
-  applyProcedure content rands
+  applyProcedure proc rands
   where
-    checkProc :: ExpressedValue -> StatedTry ([String], Expression, Environment)
-    checkProc (ExprProc params body savedEnv) = return (params, body, savedEnv)
+    checkProc :: ExpressedValue -> StatedTry Procedure
+    checkProc (ExprProc proc) = return proc
     checkProc noProc = throwError $
       "Operator of call expression should be procedure, but got: "
       `mappend` show noProc
@@ -216,9 +216,8 @@ evalCallExpr ratorExpr randExprs env = do
     safeZip (_:_) []      = throwError "Not enough arguments!"
     safeZip [] (_:_)      = throwError "Too many arguments!"
     safeZip (x:xs) (y:ys) = ((x, y):) <$> safeZip xs ys
-    applyProcedure :: ([String], Expression, Environment) -> [ExpressedValue]
-                   -> EvaluateResult
-    applyProcedure (params, body, savedEnv) rands = do
+    applyProcedure :: Procedure -> [ExpressedValue] -> EvaluateResult
+    applyProcedure (Procedure params body savedEnv) rands = do
       pairs <- safeZip params rands
       valueOf body (extendMany pairs savedEnv)
 

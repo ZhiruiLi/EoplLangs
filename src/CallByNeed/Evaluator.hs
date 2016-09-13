@@ -196,19 +196,21 @@ evalLetExpr bindings body env = evalLetExpr' bindings body env
     evalLetExpr' ((name, ConstExpr val):xs) body newEnv =
       recLetExpr name (newRef val) xs body newEnv
     evalLetExpr' ((name, ProcExpr params procBody):xs) body newEnv =
-      recLetExpr name (newRef (ExprProc params procBody env)) xs body newEnv
+      recLetExpr name
+                 (newRef (ExprProc $ Procedure params procBody env))
+                 xs body newEnv
     evalLetExpr' ((name, expr):xs) body newEnv =
       recLetExpr name (newRef (ExprThunk (Thunk expr env))) xs body newEnv
 
 evalProcExpr :: [String] -> Expression -> Environment -> EvaluateResult
-evalProcExpr params body env = return $ ExprProc params body env
+evalProcExpr params body env = return . ExprProc $ Procedure params body env
 
 evalCallExpr :: Expression -> [Expression] -> Environment -> EvaluateResult
 evalCallExpr ratorExpr randExprs env = do
   rator <- valueOf ratorExpr env
-  content <- checkProc rator
+  proc <- checkProc rator
   refs <- valueOfOperands randExprs env
-  applyProcedure content refs
+  applyProcedure proc refs
   where
     -- | Check if the operand expression is variable expression, if it is,
     -- refer to the same location, otherwise, build a new thunk and create
@@ -220,13 +222,13 @@ evalCallExpr ratorExpr randExprs env = do
     valueOfOperands (ConstExpr val : exprs) env =
       recOpVal exprs env (newRef val)
     valueOfOperands (ProcExpr params body : exprs) env =
-      recOpVal exprs env (newRef (ExprProc params body env))
+      recOpVal exprs env (newRef . ExprProc $ Procedure params body env)
     valueOfOperands (expr:exprs) env =
       recOpVal exprs env (newRef (ExprThunk (Thunk expr env)))
     recOpVal :: [Expression] -> Environment -> StatedTry Ref -> StatedTry [Ref]
     recOpVal exprs env tryRef = (:) <$> tryRef <*> valueOfOperands exprs env
-    checkProc :: ExpressedValue -> StatedTry ([String], Expression, Environment)
-    checkProc (ExprProc params body savedEnv) = return (params, body, savedEnv)
+    checkProc :: ExpressedValue -> StatedTry Procedure
+    checkProc (ExprProc proc) = return proc
     checkProc noProc = throwError $
       "Operator of call expression should be procedure, but got: "
       `mappend` show noProc
@@ -235,8 +237,7 @@ evalCallExpr ratorExpr randExprs env = do
     safeZip (_:_) []      = throwError "Not enough arguments!"
     safeZip [] (_:_)      = throwError "Too many arguments!"
     safeZip (x:xs) (y:ys) = ((x, y):) <$> safeZip xs ys
-    applyProcedure :: ([String], Expression, Environment) -> [Ref]
-                   -> EvaluateResult
-    applyProcedure (params, body, savedEnv) rands = do
+    applyProcedure :: Procedure -> [Ref] -> EvaluateResult
+    applyProcedure (Procedure params body savedEnv) rands = do
       pairs <- safeZip params (fmap DenoRef rands)
       valueOf body (extendMany pairs savedEnv)

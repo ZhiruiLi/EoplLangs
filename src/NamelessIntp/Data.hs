@@ -86,14 +86,20 @@ data BinOp =
 data UnaryOp = Minus | IsZero
   deriving(Show, Eq)
 
+data NamelessProcedure =
+  NamelessProcedure NamelessExpression NamelessEnvironment
+
+instance Show NamelessProcedure where
+  show _ = "<procedure>"
+
 data ExpressedValue = ExprNum Integer
                     | ExprBool Bool
-                    | ExprProc NamelessExpression NamelessEnvironment
+                    | ExprProc NamelessProcedure
 
 instance Show ExpressedValue where
   show (ExprNum i)  = show i
   show (ExprBool b) = show b
-  show ExprProc{}   = "<procedure>"
+  show (ExprProc p) = show p
 
 instance Eq ExpressedValue where
   (ExprNum i1) == (ExprNum i2) = i1 == i2
@@ -102,12 +108,12 @@ instance Eq ExpressedValue where
 
 data DenotedValue = DenoNum Integer
                   | DenoBool Bool
-                  | DenoProc NamelessExpression NamelessEnvironment
+                  | DenoProc NamelessProcedure
 
 instance Show DenotedValue where
   show (DenoNum i)  = show i
   show (DenoBool b) = show b
-  show DenoProc{}   = "<procedure>"
+  show (DenoProc p) = show p
 
 instance Eq DenotedValue where
   (DenoNum i1) == (DenoNum i2) = i1 == i2

@@ -51,14 +51,19 @@ data BinOp =
 data UnaryOp = Minus | IsZero
   deriving(Show, Eq)
 
+data Procedure = Procedure [String] Expression Environment
+
+instance Show Procedure where
+  show _ = "<procedure>"
+
 data ExpressedValue = ExprNum Integer
                     | ExprBool Bool
-                    | ExprProc [String] Expression Environment
+                    | ExprProc Procedure
 
 instance Show ExpressedValue where
   show (ExprNum i)  = show i
   show (ExprBool b) = show b
-  show ExprProc{}   = "<procedure>"
+  show (ExprProc p) = show p
 
 instance Eq ExpressedValue where
   (ExprNum i1) == (ExprNum i2) = i1 == i2
@@ -67,12 +72,12 @@ instance Eq ExpressedValue where
 
 data DenotedValue = DenoNum Integer
                   | DenoBool Bool
-                  | DenoProc [String] Expression Environment
+                  | DenoProc Procedure
 
 instance Show DenotedValue where
   show (DenoNum i)  = show i
   show (DenoBool b) = show b
-  show DenoProc{}   = "<procedure>"
+  show (DenoProc p) = show p
 
 instance Eq DenotedValue where
   (DenoNum i1) == (DenoNum i2) = i1 == i2

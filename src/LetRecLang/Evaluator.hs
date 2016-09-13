@@ -151,17 +151,17 @@ evalLetStarExpr ((var, expr):pairs) body env = do
   evalLetStarExpr pairs body (extend var val env)
 
 evalProcExpr :: [String] -> Expression -> Environment -> EvaluateResult
-evalProcExpr params body env = return $ ExprProc params body env
+evalProcExpr params body env = return . ExprProc $ Procedure params body env
 
 evalCallExpr :: Expression -> [Expression] -> Environment -> EvaluateResult
 evalCallExpr rator rand env = do
   rator <- valueOf rator env
-  content <- checkProc rator
+  proc <- checkProc rator
   args <- maybeArgs
-  applyProcedure content args
+  applyProcedure proc args
   where
-    checkProc :: ExpressedValue -> Try ([String], Expression, Environment)
-    checkProc (ExprProc params body savedEnv) = Right (params, body, savedEnv)
+    checkProc :: ExpressedValue -> Try Procedure
+    checkProc (ExprProc proc) = Right proc
     checkProc noProc = Left $
       "Operator of call expression should be procedure, but got: "
       `mappend` show noProc
@@ -173,10 +173,8 @@ evalCallExpr rator rand env = do
     maybeArgs :: Try [ExpressedValue]
     maybeArgs = reverse <$>
       foldl func (return []) (fmap (`valueOf` env) rand)
-    applyProcedure :: ([String], Expression, Environment)
-                   -> [ExpressedValue]
-                   -> EvaluateResult
-    applyProcedure (params, body, savedEnv) args =
+    applyProcedure :: Procedure -> [ExpressedValue] -> EvaluateResult
+    applyProcedure (Procedure params body savedEnv) args =
       applyProcedure' params body savedEnv args []
     applyProcedure' :: [String] -> Expression -> Environment
                     -> [ExpressedValue]
