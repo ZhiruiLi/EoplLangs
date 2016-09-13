@@ -19,7 +19,7 @@ import           Text.Megaparsec.String
 
 data Lang = forall a b. (Show a) => Runnable (String -> Either String a)
 
-defaultLangName = "CallByReference"
+defaultLangName = "ImplicitRefs"
 
 lookupLang :: String -> Maybe Lang
 lookupLang name = lookup name supportedLangs

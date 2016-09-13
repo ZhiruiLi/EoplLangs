@@ -109,6 +109,9 @@ data Expression =
   | BeginExpr [Expression]
   | AssignExpr String Expression
   | SetDynamicExpr String Expression Expression
+  | RefExpr String
+  | DeRefExpr String
+  | SetRefExpr String Expression
   deriving(Show, Eq)
 
 data BinOp =
@@ -121,15 +124,18 @@ data UnaryOp = Minus | IsZero
 data ExpressedValue = ExprNum Integer
                     | ExprBool Bool
                     | ExprProc [String] Expression Environment
+                    | ExprRef Ref
 
 instance Show ExpressedValue where
-  show (ExprNum i)  = show i
-  show (ExprBool b) = show b
-  show ExprProc{}   = "<procedure>"
+  show (ExprNum i)   = show i
+  show (ExprBool b)  = show b
+  show ExprProc{}    = "<procedure>"
+  show (ExprRef ref) = show ref
 
 instance Eq ExpressedValue where
   (ExprNum i1) == (ExprNum i2) = i1 == i2
   (ExprBool b1) == (ExprBool b2) = b1 == b2
+  (ExprRef ref1) == (ExprRef ref2) = ref1 == ref2
   _ == _ = False
 
 data DenotedValue = DenoRef Ref

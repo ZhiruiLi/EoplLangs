@@ -39,6 +39,35 @@ valueOf (CallExpr rator rands) env     = evalCallExpr rator rands env
 valueOf (BeginExpr exprs) env          = evalBeginExpr exprs env
 valueOf (AssignExpr name expr) env     = evalAssignExpr name expr env
 valueOf (SetDynamicExpr n e b) env     = evalSetDynamicExpr n e b env
+valueOf (RefExpr name) env             = evalRefExpr name env
+valueOf (DeRefExpr name) env           = evalDeRefExpr name env
+valueOf (SetRefExpr name expr) env     = evalSetRefExpr name expr env
+
+evalRefExpr :: String -> Environment -> EvaluateResult
+evalRefExpr name env = do
+  ref <- getRef env name
+  return $ ExprRef ref
+
+checkExprRef :: ExpressedValue -> String -> StatedTry Ref
+checkExprRef (ExprRef ref) _ = return ref
+checkExprRef notRef name = throwError $ concat
+  [ "Operand of ", name, " should be reference value, but got: ", show notRef ]
+
+evalDeRefExpr :: String -> Environment -> EvaluateResult
+evalDeRefExpr name env = do
+  refRef <- getRef env name
+  refVal <- deRef refRef
+  ref <- checkExprRef refVal "deref"
+  deRef ref
+
+evalSetRefExpr :: String -> Expression -> Environment -> EvaluateResult
+evalSetRefExpr name expr env = do
+  refRef <- getRef env name
+  refVal <- deRef refRef
+  ref <- checkExprRef refVal "setref"
+  val <- valueOf expr env
+  _ <- setRef ref val
+  return $ ExprBool False
 
 evalSetDynamicExpr :: String -> Expression -> Expression -> Environment
                    -> EvaluateResult

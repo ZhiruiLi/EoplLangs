@@ -24,6 +24,7 @@ tests = TestList
   , testLet
   , testCond
   , testProc
+  , testRef
   ]
 
 testLet :: Test
@@ -106,6 +107,59 @@ testProc = TestList
            "let f = proc (x y z) + (x, * (y, z)) in (f 1 2 3)"
   , testError "Too many parameters" "(proc () 1 1)"
   , testError "Too many arguments" "(proc (x y) +(x, y) 1)"
+  ]
+
+testRef :: Test
+testRef = TestList
+  [ testEq "Set value of a parameter should not affect the original variable."
+           (ExprNum 3)
+           $ unlines
+             [ "let p = proc (x) set x = 4"
+             , "in let a = 3"
+             , "   in begin (p a); a end"
+             ]
+  , testEq ("Parameters of nested function call should " ++
+            "not refer to the same variable.")
+           (ExprNum 55)
+           $ unlines
+             [ "let f = proc (x) set x = 44"
+             , "in let g = proc (y) (f y)"
+             , "   in let z = 55"
+             , "      in begin (g z); z end"
+             ]
+  , testEq "Test implicit ref"
+           (ExprNum 3)
+           $ unlines
+             [ "let x = 4"
+             , "in begin set x = 3;"
+             , "         x"
+             , "   end"
+             ]
+  , testEq "Test exclipit ref"
+           (ExprNum 3)
+           $ unlines
+             [ "let x = 4"
+             , "in let rx = ref x"
+             , "   in begin setref(rx, -(deref(rx), 1));"
+             , "            x"
+             , "      end"
+             ]
+  , testEq "Pass parameters with ref should refer to the original variable."
+           (ExprNum 1)
+           $ unlines
+             [ "let a = 3"
+             , "in let b = 4"
+             , "   in let swap = proc (x) proc (y)"
+             , "                   let temp = deref(x)"
+             , "                   in begin"
+             , "                        setref(x,deref(y));"
+             , "                        setref(y,temp)"
+             , "                      end"
+             , "      in begin"
+             , "           ((swap ref a) ref b);"
+             , "           -(a,b)"
+             , "         end"
+             ]
   ]
 
 initEnv :: Environment

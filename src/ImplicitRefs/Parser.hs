@@ -41,7 +41,7 @@ reservedWords :: [String]
 reservedWords  =
   [ "let", "in", "if", "then", "else", "zero?", "minus"
   , "equal?", "greater?", "less?", "cond", "end", "proc", "letrec"
-  , "begin", "set", "setdynamic", "during"
+  , "begin", "set", "setdynamic", "during", "ref", "deref", "setref"
   ]
 
 binOpsMap :: [(String, BinOp)]
@@ -82,13 +82,16 @@ integer = lexeme L.integer
 signedInteger :: Parser Integer
 signedInteger = L.signed spaceConsumer integer
 
+pairOf :: Parser a -> Parser b -> Parser (a, b)
+pairOf pa pb = parens $ do
+  a <- pa
+  _ <- comma
+  b <- pb
+  return (a, b)
+
 -- expressionPair ::= (Expression, Expression)
 expressionPair :: Parser (Expression, Expression)
-expressionPair = parens $ do
-  expr1 <- expression
-  _ <- comma
-  expr2 <- expression
-  return (expr1, expr2)
+expressionPair = pairOf expression expression
 
 -- | ConstExpr ::= Number
 constExpr :: Parser Expression
@@ -232,6 +235,21 @@ setDynamicExpr = do
   body <- expression
   return $ uncurry SetDynamicExpr assign body
 
+-- | RefExpr ::= ref Identifier
+refExpr :: Parser Expression
+refExpr = RefExpr <$> (keyWord "ref" >> identifier)
+
+-- | DeRefExpr ::= deref (Identifier)
+deRefExpr :: Parser Expression
+deRefExpr = DeRefExpr <$> (keyWord "deref" >> parens identifier)
+
+-- | SetRefExpr ::= setref (Identifier, Expression)
+setRefExpr :: Parser Expression
+setRefExpr = do
+  _ <- keyWord "setref"
+  pair <- pairOf identifier expression
+  return $ uncurry SetRefExpr pair
+
 -- | Expression ::= ConstExpr
 --              ::= BinOpExpr
 --              ::= UnaryOpExpr
@@ -239,13 +257,15 @@ setDynamicExpr = do
 --              ::= CondExpr
 --              ::= VarExpr
 --              ::= LetExpr
+--              ::= LetRecExpr
 --              ::= ProcExpr
 --              ::= CallExpr
 --              ::= BeginExpr
---              ::= NewRefExpr
+--              ::= AssignExpr
+--              ::= SetDynamicExpr
+--              ::= RefExpr
 --              ::= DeRefExpr
 --              ::= SetRefExpr
---              ::= SetDynamicExpr
 expression :: Parser Expression
 expression = foldl1 (<|>) (fmap try expressionList)
   where
@@ -257,12 +277,15 @@ expression = foldl1 (<|>) (fmap try expressionList)
       , condExpr
       , varExpr
       , letExpr
+      , letRecExpr
       , procExpr
       , callExpr
-      , letRecExpr
       , beginExpr
       , assignExpr
       , setDynamicExpr
+      , refExpr
+      , deRefExpr
+      , setRefExpr
       ]
 
 program :: Parser Program
