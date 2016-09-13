@@ -121,6 +121,15 @@ testByNameParams = TestList
              , "let callThree = proc (a) begin a; (threeTimes a) end in"
              , "(callThree (incX 1))"
              ]
+  , testEq ("If a value is not called, " ++
+            "the by name parameter should not being evaluated.")
+           (ExprNum 3)
+           $ unlines
+             [ "let x = 3 in"
+             , "let incX = proc(a) begin set x = + (x, a); x end in"
+             , "let alwaysX = proc (a) x in"
+             , "(alwaysX (incX 1))"
+             ]
   ]
 
 initEnv :: Environment
