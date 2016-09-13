@@ -122,13 +122,13 @@ data Thunk = Thunk Expression Environment
 data ExpressedValue = ExprNum Integer
                     | ExprBool Bool
                     | ExprProc [String] Expression Environment
-                    -- | ExprThunk Thunk
+                    | ExprThunk Thunk
 
 instance Show ExpressedValue where
   show (ExprNum i)  = show i
   show (ExprBool b) = show b
   show ExprProc{}   = "<procedure>"
-  -- show ExprThunk{}  = "<thunk>"
+  show ExprThunk{}  = "<thunk>"
 
 instance Eq ExpressedValue where
   (ExprNum i1) == (ExprNum i2) = i1 == i2
@@ -136,13 +136,13 @@ instance Eq ExpressedValue where
   _ == _ = False
 
 data DenotedValue = DenoRef Ref
-                  | DenoThunk Thunk
+                  -- | DenoThunk Thunk
 
 instance Show DenotedValue where
   show (DenoRef v) = show v
-  show DenoThunk{} = "<thunk>"
+  -- show DenoThunk{} = "<thunk>"
 
 instance Eq DenotedValue where
   DenoRef v1 == DenoRef v2 = v1 == v2
-  _ == _ = False
+  -- _ == _ = False
 

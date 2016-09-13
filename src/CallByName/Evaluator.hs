@@ -42,9 +42,8 @@ valueOf (AssignExpr name expr) env     = evalAssignExpr name expr env
 getRef :: Environment -> String -> StatedTry Ref
 getRef env name = do
   deno <- getDeno env name
-  case deno of
-    DenoRef ref -> return ref
-    _ -> throwError $ "Try to deref a not-reference value: " ++ name
+  let (DenoRef ref) = deno
+  return ref
 
 getDeno :: Environment -> String -> StatedTry DenotedValue
 getDeno env name = liftMaybe
@@ -78,14 +77,13 @@ evalExpressionList lst env = reverse <$> evaledList
 evalConstExpr :: ExpressedValue -> EvaluateResult
 evalConstExpr = return
 
--- | The example code of EOPL 3 seems like being wrong,
--- the thunk is declare as DenotedValue, but it is used as ExpressedValue
 evalVarExpr :: String -> Environment -> EvaluateResult
 evalVarExpr name env = do
-  deno <- getDeno env name
-  case deno of
-    DenoRef ref                     -> deRef ref
-    DenoThunk (Thunk expr savedEnv) -> valueOf expr savedEnv
+  ref <- getRef env name
+  maybeVal <- deRef ref
+  case maybeVal of
+    ExprThunk (Thunk expr savedEnv) -> valueOf expr savedEnv
+    _                               -> return maybeVal
 
 evalLetRecExpr :: [(String, [String], Expression)] -> Expression -> Environment
                -> EvaluateResult
@@ -192,19 +190,20 @@ evalCallExpr :: Expression -> [Expression] -> Environment -> EvaluateResult
 evalCallExpr ratorExpr randExprs env = do
   rator <- valueOf ratorExpr env
   content <- checkProc rator
-  denoRefs <- valueOfOperands randExprs env
-  applyProcedure content denoRefs
+  refs <- valueOfOperands randExprs env
+  applyProcedure content refs
   where
     -- | Check if the operand expression is variable expression, if it is,
     -- refer to the same location, otherwise, build a new thunk and create
     -- a new reference to this thunk.
-    valueOfOperands :: [Expression] -> Environment -> StatedTry [DenotedValue]
+    valueOfOperands :: [Expression] -> Environment -> StatedTry [Ref]
     valueOfOperands [] _ = return []
     valueOfOperands (VarExpr name : exprs) env = do
-      deno <- getDeno env name
-      (deno:) <$> valueOfOperands exprs env
-    valueOfOperands (expr:exprs) env =
-      (DenoThunk (Thunk expr env):) <$> valueOfOperands exprs env
+      ref <- getRef env name
+      (ref:) <$> valueOfOperands exprs env
+    valueOfOperands (expr:exprs) env = do
+      ref <- newRef (ExprThunk (Thunk expr env))
+      (ref:) <$> valueOfOperands exprs env
     checkProc :: ExpressedValue -> StatedTry ([String], Expression, Environment)
     checkProc (ExprProc params body savedEnv) = return (params, body, savedEnv)
     checkProc noProc = throwError $
@@ -215,8 +214,8 @@ evalCallExpr ratorExpr randExprs env = do
     safeZip (_:_) []      = throwError "Not enough arguments!"
     safeZip [] (_:_)      = throwError "Too many arguments!"
     safeZip (x:xs) (y:ys) = ((x, y):) <$> safeZip xs ys
-    applyProcedure :: ([String], Expression, Environment) -> [DenotedValue]
+    applyProcedure :: ([String], Expression, Environment) -> [Ref]
                    -> EvaluateResult
     applyProcedure (params, body, savedEnv) rands = do
-      pairs <- safeZip params rands
+      pairs <- safeZip params (fmap DenoRef rands)
       valueOf body (extendMany pairs savedEnv)
