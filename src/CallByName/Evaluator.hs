@@ -78,7 +78,7 @@ evalExpressionList lst env = reverse <$> evaledList
 evalConstExpr :: ExpressedValue -> EvaluateResult
 evalConstExpr = return
 
--- | The example code of EOPL 3 seems like being wrong, 
+-- | The example code of EOPL 3 seems like being wrong,
 -- the thunk is declare as DenotedValue, but it is used as ExpressedValue
 evalVarExpr :: String -> Environment -> EvaluateResult
 evalVarExpr name env = do
