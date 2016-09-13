@@ -57,20 +57,20 @@ apply env var = fromMaybe
   (applySafe env var)
 -}
 
-type Environment = M.Map String ExpressedValue
+type Environment = M.Map String DenotedValue
 
 empty :: Environment
 empty = M.empty
 
-initEnvironment :: [(String, ExpressedValue)] -> Environment
+initEnvironment :: [(String, DenotedValue)] -> Environment
 initEnvironment = M.fromList
 
-extend :: String -> ExpressedValue -> Environment -> Environment
+extend :: String -> DenotedValue -> Environment -> Environment
 extend = M.insert
 
 extendRec :: String -> [String] -> Expression -> Environment -> Environment
 extendRec name params body env = newEnv
-  where newEnv = extend name (ExprProc $ Procedure params body newEnv) env
+  where newEnv = extend name (DenoProc $ Procedure params body newEnv) env
 
 extendRecMany :: [(String, [String], Expression)] -> Environment -> Environment
 extendRecMany triples env = newEnv
@@ -78,18 +78,18 @@ extendRecMany triples env = newEnv
     newEnv =
       extendMany
       (fmap (\(name, params, body) ->
-               (name, ExprProc $ Procedure params body newEnv)) triples)
+               (name, DenoProc $ Procedure params body newEnv)) triples)
       env
 
-applySafe :: Environment -> String -> Maybe ExpressedValue
+applySafe :: Environment -> String -> Maybe DenotedValue
 applySafe = flip M.lookup
 
-extendMany :: [(String, ExpressedValue)] -> Environment -> Environment
+extendMany :: [(String, DenotedValue)] -> Environment -> Environment
 extendMany = flip (foldl func)
   where
     func env (var, val) = extend var val env
 
-apply :: Environment -> String -> ExpressedValue
+apply :: Environment -> String -> DenotedValue
 apply env var = fromMaybe
   (error $ "Var " `mappend` var `mappend` " is not in environment!")
   (applySafe env var)

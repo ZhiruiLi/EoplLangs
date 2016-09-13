@@ -97,7 +97,7 @@ testProc = TestList
   ]
 
 initEnv :: Environment
-initEnv = initEnvironment [("i", ExprNum 1), ("v", ExprNum 5), ("x", ExprNum 10)]
+initEnv = initEnvironment [("i", DenoNum 1), ("v", DenoNum 5), ("x", DenoNum 10)]
 
 testEq :: String -> ExpressedValue -> String -> Test
 testEq msg expect input = TestCase $

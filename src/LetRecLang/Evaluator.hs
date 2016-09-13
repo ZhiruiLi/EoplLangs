@@ -5,6 +5,7 @@ module LetRecLang.Evaluator
 , evalProgram
 ) where
 
+import           Control.Arrow     (second)
 import           LetRecLang.Data
 import           LetRecLang.Parser
 
@@ -38,9 +39,19 @@ valueOf (CallExpr rator rand) env       = evalCallExpr rator rand env
 evalConstExpr :: ExpressedValue -> EvaluateResult
 evalConstExpr = Right
 
+exprToDeno :: ExpressedValue -> DenotedValue
+exprToDeno (ExprNum n)  = DenoNum n
+exprToDeno (ExprBool b) = DenoBool b
+exprToDeno (ExprProc p) = DenoProc p
+
+denoToExpr :: DenotedValue -> ExpressedValue
+denoToExpr (DenoNum n)  = ExprNum n
+denoToExpr (DenoBool b) = ExprBool b
+denoToExpr (DenoProc p) = ExprProc p
+
 evalVarExpr :: String -> Environment -> EvaluateResult
 evalVarExpr var env =
-  liftMaybe ("Not in scope: " `mappend` var) (applySafe env var)
+  denoToExpr <$> liftMaybe ("Not in scope: " `mappend` var) (applySafe env var)
 
 evalLetRecExpr :: [(String, [String], Expression)] -> Expression -> Environment
                -> EvaluateResult
@@ -133,7 +144,8 @@ evalLetExpr :: [(String, Expression)] -> Expression -> Environment
             -> EvaluateResult
 evalLetExpr bindings body env = do
   bindVals <- evaledBindings
-  valueOf body $ extendMany bindVals env
+  let bindDenoVals = fmap (second exprToDeno) bindVals
+  valueOf body $ extendMany bindDenoVals env
   where
     func maybeBindVals (name, expr) = do
       pairs <- maybeBindVals
@@ -148,7 +160,7 @@ evalLetStarExpr :: [(String, Expression)] -> Expression -> Environment
 evalLetStarExpr [] body env = valueOf body env
 evalLetStarExpr ((var, expr):pairs) body env = do
   val <- valueOf expr env
-  evalLetStarExpr pairs body (extend var val env)
+  evalLetStarExpr pairs body (extend var (exprToDeno val) env)
 
 evalProcExpr :: [String] -> Expression -> Environment -> EvaluateResult
 evalProcExpr params body env = return . ExprProc $ Procedure params body env
@@ -177,8 +189,7 @@ evalCallExpr rator rand env = do
     applyProcedure (Procedure params body savedEnv) args =
       applyProcedure' params body savedEnv args []
     applyProcedure' :: [String] -> Expression -> Environment
-                    -> [ExpressedValue]
-                    -> [String]
+                    -> [ExpressedValue] -> [String]
                     -> EvaluateResult
     applyProcedure' [] body env [] _ = valueOf body env
     applyProcedure' params _ _ [] _ =
@@ -188,4 +199,5 @@ evalCallExpr rator rand env = do
     applyProcedure' (p:ps) body env (a:as) usedParams =
       if p `elem` usedParams
         then Left $ "Parameter name conflict: " `mappend` p
-        else applyProcedure' ps body (extend p a env) as (p:usedParams)
+        else applyProcedure' ps body (extend p (exprToDeno a) env)
+                             as (p:usedParams)
