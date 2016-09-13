@@ -203,12 +203,16 @@ evalCallExpr ratorExpr randExprs env = do
     -- a new reference to this thunk.
     valueOfOperands :: [Expression] -> Environment -> StatedTry [Ref]
     valueOfOperands [] _ = return []
-    valueOfOperands (VarExpr name : exprs) env = do
-      ref <- getRef env name
-      (ref:) <$> valueOfOperands exprs env
-    valueOfOperands (expr:exprs) env = do
-      ref <- newRef (ExprThunk (Thunk expr env))
-      (ref:) <$> valueOfOperands exprs env
+    valueOfOperands (VarExpr name : exprs) env =
+      recOpVal exprs env (getRef env name)
+    valueOfOperands (ConstExpr val : exprs) env =
+      recOpVal exprs env (newRef val)
+    valueOfOperands (ProcExpr params body : exprs) env =
+      recOpVal exprs env (newRef (ExprProc params body env))
+    valueOfOperands (expr:exprs) env =
+      recOpVal exprs env (newRef (ExprThunk (Thunk expr env)))
+    recOpVal :: [Expression] -> Environment -> StatedTry Ref -> StatedTry [Ref]
+    recOpVal exprs env tryRef = (:) <$> tryRef <*> valueOfOperands exprs env
     checkProc :: ExpressedValue -> StatedTry ([String], Expression, Environment)
     checkProc (ExprProc params body savedEnv) = return (params, body, savedEnv)
     checkProc noProc = throwError $
