@@ -182,11 +182,23 @@ evalLetExpr :: [(String, Expression)] -> Expression -> Environment
             -> EvaluateResult
 evalLetExpr bindings body env = evalLetExpr' bindings body env
   where
+    recLetExpr :: String -> StatedTry Ref
+               -> [(String, Expression)] -> Expression -> Environment
+               -> EvaluateResult
+    recLetExpr name tryRef xs body newEnv = do
+      ref <- tryRef
+      evalLetExpr' xs body (extend name (DenoRef ref) newEnv)
+    evalLetExpr' :: [(String, Expression)] -> Expression -> Environment
+                 -> EvaluateResult
     evalLetExpr' [] body newEnv = valueOf body newEnv
-    evalLetExpr' ((name, expr):xs) body newEnv = do
-      val <- valueOf expr env
-      ref <- newRef val
-      evalLetExpr xs body (extend name (DenoRef ref) newEnv)
+    evalLetExpr' ((name, VarExpr var):xs) body newEnv =
+      recLetExpr name (getRef env var) xs body newEnv
+    evalLetExpr' ((name, ConstExpr val):xs) body newEnv =
+      recLetExpr name (newRef val) xs body newEnv
+    evalLetExpr' ((name, ProcExpr params procBody):xs) body newEnv =
+      recLetExpr name (newRef (ExprProc params procBody env)) xs body newEnv
+    evalLetExpr' ((name, expr):xs) body newEnv =
+      recLetExpr name (newRef (ExprThunk (Thunk expr env))) xs body newEnv
 
 evalProcExpr :: [String] -> Expression -> Environment -> EvaluateResult
 evalProcExpr params body env = return $ ExprProc params body env
