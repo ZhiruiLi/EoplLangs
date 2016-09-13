@@ -5,7 +5,7 @@ import           Data.Maybe (fromMaybe)
 
 type Try = Either String
 
--- | This implementation (together with applySafe') is inefficient,
+-- | This implementation (together with apply') is inefficient,
 -- as it build a new closure every time the procedure is retrived.
 -- Use lazy evaluation, we can have a better solution
 {-
@@ -35,15 +35,15 @@ extendRecMany :: [(String, [String], Expression)] -> Environment -> Environment
 extendRecMany lst = RecEnv (M.fromList (fmap func lst))
   where func (name, params, body) = (name, (params, body))
 
-applySafe :: Environment -> String -> Maybe ExpressedValue
-applySafe EmptyEnv _ = Nothing
-applySafe (NormalEnv headEnv restEnv) name =
+apply :: Environment -> String -> Maybe ExpressedValue
+apply EmptyEnv _ = Nothing
+apply (NormalEnv headEnv restEnv) name =
   case M.lookup name headEnv of
-    Nothing -> applySafe restEnv name
+    Nothing -> apply restEnv name
     res     -> res
-applySafe env@(RecEnv headEnv restEnv) name =
+apply env@(RecEnv headEnv restEnv) name =
   case M.lookup name headEnv of
-    Nothing             -> applySafe restEnv name
+    Nothing             -> apply restEnv name
     Just (params, body) -> Just $ ExprProc params body env
 
 extendMany :: [(String, ExpressedValue)] -> Environment -> Environment
@@ -51,10 +51,10 @@ extendMany = flip (foldl func)
   where
     func env (var, val) = extend var val env
 
-apply :: Environment -> String -> ExpressedValue
-apply env var = fromMaybe
+applyForce :: Environment -> String -> ExpressedValue
+applyForce env var = fromMaybe
   (error $ "Var " `mappend` var `mappend` " is not in environment!")
-  (applySafe env var)
+  (apply env var)
 -}
 
 type Environment = M.Map String DenotedValue
@@ -81,18 +81,18 @@ extendRecMany triples env = newEnv
                (name, DenoProc $ Procedure params body newEnv)) triples)
       env
 
-applySafe :: Environment -> String -> Maybe DenotedValue
-applySafe = flip M.lookup
+apply :: Environment -> String -> Maybe DenotedValue
+apply = flip M.lookup
 
 extendMany :: [(String, DenotedValue)] -> Environment -> Environment
 extendMany = flip (foldl func)
   where
     func env (var, val) = extend var val env
 
-apply :: Environment -> String -> DenotedValue
-apply env var = fromMaybe
+applyForce :: Environment -> String -> DenotedValue
+applyForce env var = fromMaybe
   (error $ "Var " `mappend` var `mappend` " is not in environment!")
-  (applySafe env var)
+  (apply env var)
 
 data Program = Prog Expression
   deriving (Show, Eq)

@@ -30,18 +30,18 @@ extendRecMany triples env = newEnv
                (name, ExprProc $ Procedure params body newEnv)) triples)
       env
 
-applySafe :: Environment -> String -> Maybe ExpressedValue
-applySafe = flip M.lookup
+apply :: Environment -> String -> Maybe ExpressedValue
+apply = flip M.lookup
 
 extendMany :: [(String, ExpressedValue)] -> Environment -> Environment
 extendMany = flip (foldl func)
   where
     func env (var, val) = extend var val env
 
-apply :: Environment -> String -> ExpressedValue
-apply env var = fromMaybe
+applyForce :: Environment -> String -> ExpressedValue
+applyForce env var = fromMaybe
   (error $ "Var " `mappend` var `mappend` " is not in environment!")
-  (applySafe env var)
+  (apply env var)
 
 newtype Ref = Ref { addr::Integer } deriving(Show, Eq)
 

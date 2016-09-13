@@ -28,7 +28,7 @@ transConstExpr :: Integer -> TranslateResult
 transConstExpr i = Right $ NamelessConstExpr i
 
 transVarExpr :: String -> StaticEnvironment -> TranslateResult
-transVarExpr name senv = case applySEnvSafe senv name of
+transVarExpr name senv = case applySEnv senv name of
   Nothing -> Left $ "Not in scope: " `mappend` name
   Just i  -> Right $ NamelessVarExpr i
 

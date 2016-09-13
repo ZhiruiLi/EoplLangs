@@ -51,7 +51,7 @@ denoToExpr (DenoProc p) = ExprProc p
 
 evalVarExpr :: String -> Environment -> EvaluateResult
 evalVarExpr var env =
-  denoToExpr <$> liftMaybe ("Not in scope: " `mappend` var) (applySafe env var)
+  denoToExpr <$> liftMaybe ("Not in scope: " `mappend` var) (apply env var)
 
 evalLetRecExpr :: [(String, [String], Expression)] -> Expression -> Environment
                -> EvaluateResult

@@ -19,15 +19,15 @@ extend = (:)
 extendMany :: [ExpressedValue] -> NamelessEnvironment -> NamelessEnvironment
 extendMany = mappend
 
-apply :: NamelessEnvironment -> Integer -> ExpressedValue
-apply env lexAddr = fromMaybe
+applyForce :: NamelessEnvironment -> Integer -> ExpressedValue
+applyForce env lexAddr = fromMaybe
   (error $ "Invalid address: " `mappend` show lexAddr `mappend` "!")
-  (applySafe env lexAddr)
+  (apply env lexAddr)
 
-applySafe :: NamelessEnvironment -> Integer -> Maybe ExpressedValue
-applySafe (x:_) 0  = Just x
-applySafe (_:xs) n = applySafe xs (n - 1)
-applySafe [] n     = Nothing
+apply :: NamelessEnvironment -> Integer -> Maybe ExpressedValue
+apply (x:_) 0  = Just x
+apply (_:xs) n = apply xs (n - 1)
+apply [] n     = Nothing
 
 type StaticEnvironment = [String]
 
@@ -37,15 +37,15 @@ emptySEnv = []
 extendSEnv :: String -> StaticEnvironment -> StaticEnvironment
 extendSEnv = (:)
 
-applySEnvSafe :: StaticEnvironment -> String -> Maybe Integer
-applySEnvSafe [] _ = Nothing
-applySEnvSafe (h:t) sym =
-  if h == sym then Just 0 else (+ 1) <$> applySEnvSafe t sym
+applySEnv :: StaticEnvironment -> String -> Maybe Integer
+applySEnv [] _ = Nothing
+applySEnv (h:t) sym =
+  if h == sym then Just 0 else (+ 1) <$> applySEnv t sym
 
-applySEnv :: StaticEnvironment -> String -> Integer
-applySEnv env var = fromMaybe
+applySEnvForce :: StaticEnvironment -> String -> Integer
+applySEnvForce env var = fromMaybe
   (error $ "Var " `mappend` var `mappend` " is not in static environment!")
-  (applySEnvSafe env var)
+  (applySEnv env var)
 
 data NamelessProgram = NamelessProg NamelessExpression
   deriving (Show, Eq)

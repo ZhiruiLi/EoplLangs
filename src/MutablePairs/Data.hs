@@ -39,18 +39,18 @@ extendRecMany lst env = do
       ref <- newRef (ExprBool False) -- dummy value false for allocating space
       (ref:) <$> allocMany (x - 1)
 
-applySafe :: Environment -> String -> Maybe DenotedValue
-applySafe = flip M.lookup
+apply :: Environment -> String -> Maybe DenotedValue
+apply = flip M.lookup
 
 extendMany :: [(String, DenotedValue)] -> Environment -> Environment
 extendMany = flip (foldl func)
   where
     func env (var, val) = extend var val env
 
-apply :: Environment -> String -> DenotedValue
-apply env var = fromMaybe
+applyForce :: Environment -> String -> DenotedValue
+applyForce env var = fromMaybe
   (error $ "Var " `mappend` var `mappend` " is not in environment!")
-  (applySafe env var)
+  (apply env var)
 
 newtype Ref = Ref { addr::Integer } deriving(Show, Eq)
 

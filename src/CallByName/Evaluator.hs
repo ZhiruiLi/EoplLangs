@@ -47,7 +47,7 @@ getRef env name = do
 
 getDeno :: Environment -> String -> StatedTry DenotedValue
 getDeno env name = liftMaybe
-  ("Not in scope: " ++ show name) (applySafe env name)
+  ("Not in scope: " ++ show name) (apply env name)
 
 evalAssignExpr :: String -> Expression -> Environment -> EvaluateResult
 evalAssignExpr name expr env = do

@@ -21,7 +21,7 @@ evalProgram (Prog expr) = eval expr
 
 valueOf :: Expression -> Environment -> EvaluateResult
 valueOf (ConstExpr x) _   = Right x
-valueOf (VarExpr var) env = case applySafe env var of
+valueOf (VarExpr var) env = case apply env var of
   Nothing  -> Left $ "Not in scope: " `mappend` var
   Just val -> Right val
 -- begin operate on list
@@ -37,7 +37,7 @@ valueOf (BinOpExpr Cons expr1 expr2) env =
 valueOf (UnaryOpExpr Car expr) env =
   case valueOf expr env of
     msg@(Left _) -> msg
-    Right (ExprList []) -> Left "Could not apply 'car' on empty list"
+    Right (ExprList []) -> Left "Could not applyForce 'car' on empty list"
     Right (ExprList (v:_)) -> Right v
     Right v -> Left $
       "Operand of '" `mappend` show Car `mappend`
@@ -45,7 +45,7 @@ valueOf (UnaryOpExpr Car expr) env =
 valueOf (UnaryOpExpr Cdr expr) env =
   case valueOf expr env of
     msg@(Left _) -> msg
-    Right (ExprList []) -> Left "Could not apply 'cdr' on empty list"
+    Right (ExprList []) -> Left "Could not applyForce 'cdr' on empty list"
     Right (ExprList (_:t)) -> Right $ ExprList t
     Right v -> Left $
       "Operand of '" `mappend` show Cdr `mappend`

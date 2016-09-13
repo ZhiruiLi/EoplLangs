@@ -39,7 +39,7 @@ evalConstExpr = return
 
 evalVarExpr :: String -> Environment -> EvaluateResult
 evalVarExpr var env =
-  liftMaybe ("Not in scope: " `mappend` var) (applySafe env var)
+  liftMaybe ("Not in scope: " `mappend` var) (apply env var)
 
 binBoolOpMap :: [(BinOp, Bool -> Bool -> Bool)]
 binBoolOpMap = []

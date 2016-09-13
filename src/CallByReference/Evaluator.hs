@@ -52,7 +52,7 @@ evalSetDynamicExpr name expr body env = do
   return result
 
 getRef :: Environment -> String -> StatedTry Ref
-getRef env name = case applySafe env name of
+getRef env name = case apply env name of
   Just (DenoRef ref) -> return ref
   Nothing            -> throwError $ "Not in scope: " ++ show name
 

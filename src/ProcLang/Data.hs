@@ -21,13 +21,13 @@ extendMany = flip (foldl func)
   where
     func env (var, val) = extend var val env
 
-apply :: Environment -> String -> ExpressedValue
-apply env var = fromMaybe
+applyForce :: Environment -> String -> ExpressedValue
+applyForce env var = fromMaybe
   (error $ "Var " `mappend` var `mappend` " is not in environment!")
-  (applySafe env var)
+  (apply env var)
 
-applySafe :: Environment -> String -> Maybe ExpressedValue
-applySafe = flip M.lookup
+apply :: Environment -> String -> Maybe ExpressedValue
+apply = flip M.lookup
 
 data Program = Prog Expression
   deriving (Show, Eq)
