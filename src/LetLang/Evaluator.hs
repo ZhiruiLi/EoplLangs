@@ -5,10 +5,15 @@ module LetLang.Evaluator
 , evalProgram
 ) where
 
+import           Control.Applicative ((<|>))
 import           LetLang.Data
 import           LetLang.Parser
 
 type EvaluateResult = Either String ExpressedValue
+
+liftMaybe :: String -> Maybe a -> Try a
+liftMaybe _ (Just x) = return x
+liftMaybe y Nothing  = Left y
 
 run :: String -> EvaluateResult
 run input = parseProgram input >>= evalProgram
@@ -76,69 +81,75 @@ unaryNumToNumOpMap = [(Minus, negate)]
 unaryNumToBoolOpMap :: [(UnaryOp, Integer -> Bool)]
 unaryNumToBoolOpMap = [(IsZero, (0 ==))]
 
-evalBinOpExpr :: BinOp
-              -> Expression
-              -> Expression
-              -> Environment
+unpackNum :: String -> ExpressedValue -> Try Integer
+unpackNum _ (ExprNum n) = return n
+unpackNum caller notNum = Left $ concat [
+  caller, ": Unpacking a not number value: ", show notNum ]
+
+unpackBool :: String -> ExpressedValue -> Try Bool
+unpackBool _ (ExprBool b) = return b
+unpackBool caller notBool = Left $ concat [
+  caller, ": Unpacking a not boolean value: ", show notBool ]
+
+tryFind :: Eq a => String -> a -> [(a, b)] -> Try b
+tryFind err x pairs = liftMaybe err (lookup x pairs)
+
+tryFindOp :: (Eq a, Show a) => a -> [(a, b)] -> Try b
+tryFindOp op = tryFind ("Unknown operator: " ++ show op) op
+
+evalBinOpExpr :: BinOp -> Expression -> Expression -> Environment
               -> EvaluateResult
-evalBinOpExpr op expr1 expr2 env =
-  case (wrapVal1, wrapVal2) of
-    (msg@(Left _), _) -> msg
-    (_, msg@(Left _)) -> msg
-    (Right val1, Right val2) ->
-      case ( lookup op binNumToNumOpMap
-           , lookup op binNumToBoolOpMap
-           , lookup op binBoolOpMap
-           ) of
-        (Just func, _, _) -> case (val1, val2) of
-          (ExprNum n1, ExprNum n2) -> Right . ExprNum $ func n1 n2
-          (a, b)                   -> opError "number" op a b
-        (_, Just func, _) -> case (val1, val2) of
-          (ExprNum n1, ExprNum n2) -> Right . ExprBool $ func n1 n2
-          (a, b)                   -> opError "number" op a b
-        (_, _, Just func) -> case (val1, val2) of
-          (ExprBool b1, ExprBool b2) -> Right . ExprBool $ func b1 b2
-          (a, b)                     -> opError "boolean value" op a b
-        _ -> invalidOpError op
+evalBinOpExpr op expr1 expr2 env = do
+  v1 <- valueOf expr1 env
+  v2 <- valueOf expr2 env
+  numToNum v1 v2 <|> numToBool v1 v2  <|> boolToBool v1 v2
   where
-    wrapVal1 = valueOf expr1 env
-    wrapVal2 = valueOf expr2 env
-    opError typeName op a b = Left $ concat
-      [ "Operands of binary ", show op, " operator "
-      , "should both be ", typeName, "s, but got: "
-      , show a, " and ", show b
-      ]
+    findOpFrom = tryFindOp op
+    unpackN = unpackNum $ "binary operation " ++ show op
+    unpackB = unpackBool $ "binary operation " ++ show op
+    numToNum :: ExpressedValue -> ExpressedValue -> EvaluateResult
+    numToNum val1 val2 = do
+      func <- findOpFrom binNumToNumOpMap
+      n1 <- unpackN val1
+      n2 <- unpackN val2
+      return . ExprNum $ func n1 n2
+    numToBool :: ExpressedValue -> ExpressedValue -> EvaluateResult
+    numToBool val1 val2 = do
+      func <- findOpFrom binNumToBoolOpMap
+      n1 <- unpackN val1
+      n2 <- unpackN val2
+      return . ExprBool $ func n1 n2
+    boolToBool :: ExpressedValue -> ExpressedValue -> EvaluateResult
+    boolToBool val1 val2 = do
+      func <- findOpFrom binBoolOpMap
+      b1 <- unpackB val1
+      b2 <- unpackB val2
+      return . ExprBool $ func b1 b2
 
-invalidOpError op = error $ "Invalid operator: " `mappend` show op
-
-evalUnaryOpExpr :: UnaryOp
-                -> Expression
-                -> Environment
+evalUnaryOpExpr :: UnaryOp -> Expression -> Environment
                 -> EvaluateResult
-evalUnaryOpExpr op expr env =
-  case valueOf expr env of
-    msg@(Left _) -> msg
-    (Right val) ->
-      case ( lookup op unaryNumToNumOpMap
-           , lookup op unaryNumToBoolOpMap
-           , lookup op unaryBoolOpMap
-           ) of
-        (Just func, _, _) -> case val of
-          (ExprNum n) -> Right . ExprNum $ func n
-          _           -> opError "number" op val
-        (_, Just func, _) -> case val of
-          (ExprNum n) -> Right . ExprBool $ func n
-          _           -> opError "number" op val
-        (_, _, Just func) -> case val of
-          (ExprBool b) -> Right . ExprBool $ func b
-          _            -> opError "boolean value" op val
-        _ -> invalidOpError op
+evalUnaryOpExpr op expr env = do
+  v <- valueOf expr env
+  numToNum v <|> numToBool v <|> boolToBool v
   where
-    opError typeName op val = Left $ concat
-      [ "Operand of ", show op , " operator "
-      , "should be ", typeName, ", but got: "
-      , show val
-      ]
+    findOpFrom = tryFindOp op
+    unpackN = unpackNum $ "unary operation " ++ show op
+    unpackB = unpackBool $ "unary operation " ++ show op
+    numToNum :: ExpressedValue -> EvaluateResult
+    numToNum val = do
+      func <- findOpFrom unaryNumToNumOpMap
+      n <- unpackN val
+      return . ExprNum $ func n
+    numToBool :: ExpressedValue -> EvaluateResult
+    numToBool val = do
+      func <- findOpFrom unaryNumToBoolOpMap
+      n <- unpackN val
+      return . ExprBool $ func n
+    boolToBool :: ExpressedValue -> EvaluateResult
+    boolToBool val = do
+      func <- findOpFrom unaryBoolOpMap
+      b <- unpackB val
+      return . ExprBool $ func b
 
 buildList :: [Expression] -> Environment -> EvaluateResult
 buildList es env = case collect of

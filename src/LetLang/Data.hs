@@ -3,6 +3,8 @@ module LetLang.Data where
 import qualified Data.Map   as M
 import           Data.Maybe (fromMaybe)
 
+type Try = Either String
+
 type Environment = M.Map String ExpressedValue
 
 empty :: Environment
