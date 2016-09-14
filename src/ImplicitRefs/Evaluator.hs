@@ -49,23 +49,23 @@ evalRefExpr name env = do
   ref <- getRef env name
   return $ ExprRef ref
 
-checkExprRef :: ExpressedValue -> String -> StatedTry Ref
-checkExprRef (ExprRef ref) _ = return ref
-checkExprRef notRef name = throwError $ concat
+unpackExprRef :: ExpressedValue -> String -> StatedTry Ref
+unpackExprRef (ExprRef ref) _ = return ref
+unpackExprRef notRef name = throwError $ concat
   [ "Operand of ", name, " should be reference value, but got: ", show notRef ]
 
 evalDeRefExpr :: String -> Environment -> EvaluateResult
 evalDeRefExpr name env = do
   refRef <- getRef env name
   refVal <- deRef refRef
-  ref <- checkExprRef refVal "deref"
+  ref <- unpackExprRef refVal "deref"
   deRef ref
 
 evalSetRefExpr :: String -> Expression -> Environment -> EvaluateResult
 evalSetRefExpr name expr env = do
   refRef <- getRef env name
   refVal <- deRef refRef
-  ref <- checkExprRef refVal "setref"
+  ref <- unpackExprRef refVal "setref"
   val <- valueOf expr env
   _ <- setRef ref val
   return $ ExprBool False
