@@ -118,7 +118,7 @@ testByNameParams = TestList
              , "in let a = 3"
              , "   in begin (p a); a end"
              ]
-  , testEq ("Parameters of nested function call should " ++
+  , testEq ("Parameters of nested function call should " `mappend`
             "refer to the same variable.")
            (ExprNum 44)
            $ unlines
@@ -166,7 +166,6 @@ testError msg input = TestCase $
           Left _  -> True
           Right _ -> False
       Left _ -> False
-
 
 testNoBound :: String -> String -> Test
 testNoBound msg input = TestCase $

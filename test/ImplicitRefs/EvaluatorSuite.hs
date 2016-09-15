@@ -118,7 +118,7 @@ testRef = TestList
              , "in let a = 3"
              , "   in begin (p a); a end"
              ]
-  , testEq ("Parameters of nested function call should " ++
+  , testEq ("Parameters of nested function call should " `mappend`
             "not refer to the same variable.")
            (ExprNum 55)
            $ unlines

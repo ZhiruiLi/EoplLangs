@@ -91,7 +91,7 @@ tryFind :: Eq a => String -> a -> [(a, b)] -> Try b
 tryFind err x pairs = liftMaybe err (lookup x pairs)
 
 tryFindOp :: (Eq a, Show a) => a -> [(a, b)] -> Try b
-tryFindOp op = tryFind ("Unknown operator: " ++ show op) op
+tryFindOp op = tryFind ("Unknown operator: " `mappend` show op) op
 
 evalBinOpExpr :: BinOp -> Expression -> Expression -> Environment
               -> EvaluateResult
@@ -101,8 +101,8 @@ evalBinOpExpr op expr1 expr2 env = do
   numToNum v1 v2 <|> numToBool v1 v2  <|> boolToBool v1 v2
   where
     findOpFrom = tryFindOp op
-    unpackN = unpackNum $ "binary operation " ++ show op
-    unpackB = unpackBool $ "binary operation " ++ show op
+    unpackN = unpackNum $ "binary operation " `mappend` show op
+    unpackB = unpackBool $ "binary operation " `mappend` show op
     numToNum :: ExpressedValue -> ExpressedValue -> EvaluateResult
     numToNum val1 val2 = do
       func <- findOpFrom binNumToNumOpMap
@@ -129,8 +129,8 @@ evalUnaryOpExpr op expr env = do
   numToNum v <|> numToBool v <|> boolToBool v
   where
     findOpFrom = tryFindOp op
-    unpackN = unpackNum $ "unary operation " ++ show op
-    unpackB = unpackBool $ "unary operation " ++ show op
+    unpackN = unpackNum $ "unary operation " `mappend` show op
+    unpackB = unpackBool $ "unary operation " `mappend` show op
     numToNum :: ExpressedValue -> EvaluateResult
     numToNum val = do
       func <- findOpFrom unaryNumToNumOpMap

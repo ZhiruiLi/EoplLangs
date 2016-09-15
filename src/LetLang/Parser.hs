@@ -72,7 +72,8 @@ identifier = lexeme (p >>= check)
   where
     p       = (:) <$> letterChar <*> many alphaNumChar
     check x = if x `elem` reservedWords
-                then fail $ "keyword " ++ show x ++ " cannot be an identifier"
+                then fail $
+                  concat ["keyword ", show x, " cannot be an identifier"]
                 else return x
 
 integer :: Parser Integer

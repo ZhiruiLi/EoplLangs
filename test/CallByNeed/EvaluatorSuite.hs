@@ -121,7 +121,7 @@ testByNameParams = TestList
              , "let callThree = proc (a) begin a; (threeTimes a) end in"
              , "(callThree (incX 1))"
              ]
-  , testEq ("If a value is not called, " ++
+  , testEq ("If a value is not called, " `mappend`
             "the by need parameter should not being evaluated.")
            (ExprNum 3)
            $ unlines
