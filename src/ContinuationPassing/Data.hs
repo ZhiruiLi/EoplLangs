@@ -1,7 +1,8 @@
 module ContinuationPassing.Data where
 
-import qualified Data.Map   as M
-import           Data.Maybe (fromMaybe)
+import qualified Data.Map    as M
+import           Data.Maybe  (fromMaybe)
+import           Debug.Trace (trace)
 
 type Try = Either String
 
@@ -23,11 +24,9 @@ extendRec name params body env = newEnv
 extendRecMany :: [(String, [String], Expression)] -> Environment -> Environment
 extendRecMany triples env = newEnv
   where
-    newEnv =
-      extendMany
-      (fmap (\(name, params, body) ->
-               (name, DenoProc $ Procedure params body newEnv)) triples)
-      env
+    buildRecProc (name, params, body) = (name, proc)
+      where proc = DenoProc $ Procedure params body newEnv
+    newEnv = extendMany (fmap buildRecProc triples) env
 
 apply :: Environment -> String -> Maybe DenotedValue
 apply = flip M.lookup
@@ -48,12 +47,7 @@ applyCont :: Continuation -> ExpressedValue -> Try ExpressedValue
 applyCont (Continuation func) = func
 
 endCont :: Continuation
-endCont = Continuation return
-
-extendCont :: (ExpressedValue -> Try ExpressedValue) -> Continuation
-           -> Continuation
-extendCont func cont = Continuation newCont
-  where newCont val = applyCont cont val >>= func
+endCont = trace "End of computation!" $ Continuation return
 
 data Program = Prog Expression
   deriving (Show, Eq)

@@ -58,6 +58,10 @@ library
                      , CallByNeed.Evaluator
                      , CallByNeed.Parser
                      
+                     , ContinuationPassing.Data
+                     , ContinuationPassing.Evaluator
+                     , ContinuationPassing.Parser
+                     
   build-depends:       base 
                      , megaparsec
                      , containers
