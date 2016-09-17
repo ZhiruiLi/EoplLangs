@@ -30,15 +30,15 @@ evalProgram :: Program -> EvaluateResult
 evalProgram (Prog expr) = eval expr endCont
 
 valueOf :: Expression -> Environment -> Continuation -> EvaluateResult
-valueOf (ConstExpr x) _ cont = evalConstExpr x cont
-valueOf (VarExpr var) env cont = evalVarExpr var env cont
-valueOf (ProcExpr params body) env cont = evalProcExpr params body env cont
+valueOf (ConstExpr x) _ cont             = evalConstExpr x cont
+valueOf (VarExpr var) env cont           = evalVarExpr var env cont
+valueOf (ProcExpr params body) env cont  = evalProcExpr params body env cont
 valueOf (LetRecExpr procs body) env cont = evalLetRecExpr procs body env cont
-valueOf (LetExpr binds body) env cont = evalLetExpr binds body env cont
-valueOf (UnaryOpExpr op e) env cont = evalUnaryOpExpr op e env cont
-valueOf (IfExpr e1 e2 e3) env cont = evalIfExpr e1 e2 e3 env cont
-valueOf (BinOpExpr op e1 e2) env cont  = evalBinOpExpr op e1 e2 env cont
-valueOf (CallExpr rator rand) env cont = evalCallExpr rator rand env cont
+valueOf (LetExpr binds body) env cont    = evalLetExpr binds body env cont
+valueOf (UnaryOpExpr op e) env cont      = evalUnaryOpExpr op e env cont
+valueOf (IfExpr e1 e2 e3) env cont       = evalIfExpr e1 e2 e3 env cont
+valueOf (BinOpExpr op e1 e2) env cont    = evalBinOpExpr op e1 e2 env cont
+valueOf (CallExpr rator rand) env cont   = evalCallExpr rator rand env cont
 
 exprToDeno :: ExpressedValue -> DenotedValue
 exprToDeno (ExprNum n)  = DenoNum n
@@ -201,52 +201,27 @@ evalCallExprTail :: [Expression] -> ExpressedValue -> [ExpressedValue]
                  -> EvaluateResult
 evalCallExprTail [] rator randsAcc env cont = do
   proc <- unpackProc "procedure call" rator
-  applyProcedure proc (reverse randsAcc) env cont
+  let rands = fmap exprToDeno (reverse randsAcc)
+  applyProcedure proc rands cont
 evalCallExprTail (randE:randEs) rator randsAcc env cont =
   valueOf randE env (extendCallRandsCont randEs rator randsAcc env cont)
 
 extendCallRandsCont :: [Expression] -> ExpressedValue -> [ExpressedValue]
                     -> Environment -> Continuation
                     -> Continuation
-extendCallRandsCont randEs rator randsAcc env cont = undefined
+extendCallRandsCont randExprs proc randsAcc env cont = Continuation $
+  \rand -> evalCallExprTail randExprs proc (rand:randsAcc) env cont
 
-applyProcedure :: Procedure -> [ExpressedValue] -> Environment -> Continuation
+safeZip :: [a] -> [b] -> Try [(a, b)]
+safeZip [] []         = return []
+safeZip (a:as) (b:bs) = ((a, b):) <$> safeZip as bs
+safeZip _ _           = throwError "Unmatched parameters and arguements!"
+
+applyProcedure :: Procedure -> [DenotedValue] -> Continuation
                -> EvaluateResult
-applyProcedure p randsAcc env cont = undefined
-
-{-
-evalCallExpr :: Expression -> [Expression] -> Environment -> EvaluateResult
-evalCallExpr rator rand env = do
-  rator <- valueOf rator env
-  proc <- unpackProc rator
-  args <- maybeArgs
-  applyProcedure proc args
-  where
-    func :: Try [ExpressedValue] -> Try ExpressedValue -> Try [ExpressedValue]
-    func maybeArgs maybeArg = do
-      args <- maybeArgs
-      arg <- maybeArg
-      return $ arg:args
-    maybeArgs :: Try [ExpressedValue]
-    maybeArgs = reverse <$>
-      foldl func (return []) (fmap (`valueOf` env) rand)
-    applyProcedure :: Procedure -> [ExpressedValue] -> EvaluateResult
-    applyProcedure (Procedure params body savedEnv) args =
-      applyProcedure' params body savedEnv args []
-    applyProcedure' :: [String] -> Expression -> Environment
-                    -> [ExpressedValue] -> [String]
-                    -> EvaluateResult
-    applyProcedure' [] body env [] _ = valueOf body env
-    applyProcedure' params _ _ [] _ =
-      throwError $ "Too many parameters: " `mappend` show params
-    applyProcedure' [] _ _ args _ =
-      throwError $ "Too many arguments: " `mappend` show args
-    applyProcedure' (p:ps) body env (a:as) usedParams =
-      if p `elem` usedParams
-        then throwError $ "Parameter name conflict: " `mappend` p
-        else applyProcedure' ps body (extend p (exprToDeno a) env)
-                             as (p:usedParams)
--}
+applyProcedure (Procedure params body savedEnv) rands cont = do
+  argPairs <- safeZip params rands
+  valueOf body (extendMany argPairs savedEnv) cont
 
 extendCont :: (ExpressedValue -> Try ExpressedValue) -> Continuation
               -> Continuation
