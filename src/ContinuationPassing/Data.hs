@@ -1,8 +1,7 @@
 module ContinuationPassing.Data where
 
-import qualified Data.Map    as M
-import           Data.Maybe  (fromMaybe)
-import           Debug.Trace (trace)
+import qualified Data.Map   as M
+import           Data.Maybe (fromMaybe)
 
 type Try = Either String
 
@@ -47,7 +46,7 @@ applyCont :: Continuation -> ExpressedValue -> Try ExpressedValue
 applyCont (Continuation func) = func
 
 endCont :: Continuation
-endCont = trace "End of computation!" $ Continuation return
+endCont = Continuation return
 
 data Program = Prog Expression
   deriving (Show, Eq)
