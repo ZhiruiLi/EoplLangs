@@ -3,25 +3,26 @@ module Repl
 ( repl
 ) where
 
-import qualified CallByName.Evaluator      as CallByName
-import qualified CallByNeed.Evaluator      as CallByNeed
-import qualified CallByReference.Evaluator as CallByReference
-import           Data.Char                 (isSpace)
-import           Data.Maybe                (fromMaybe)
-import qualified ExplicitRefs.Evaluator    as ExplicitRefs
-import qualified ImplicitRefs.Evaluator    as ImplicitRefs
-import qualified LetLang.Evaluator         as LetLang
-import qualified LetRecLang.Evaluator      as LetRecLang
-import qualified MutablePairs.Evaluator    as MutablePairs
-import qualified NamelessIntp.Evaluator    as NamelessIntp
-import qualified ProcLang.Evaluator        as ProcLang
+import qualified CallByName.Evaluator          as CallByName
+import qualified CallByNeed.Evaluator          as CallByNeed
+import qualified CallByReference.Evaluator     as CallByReference
+import qualified ContinuationPassing.Evaluator as CPassing
+import           Data.Char                     (isSpace)
+import           Data.Maybe                    (fromMaybe)
+import qualified ExplicitRefs.Evaluator        as ExplicitRefs
+import qualified ImplicitRefs.Evaluator        as ImplicitRefs
+import qualified LetLang.Evaluator             as LetLang
+import qualified LetRecLang.Evaluator          as LetRecLang
+import qualified MutablePairs.Evaluator        as MutablePairs
+import qualified NamelessIntp.Evaluator        as NamelessIntp
+import qualified ProcLang.Evaluator            as ProcLang
 import           System.IO
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
 data Lang = forall a b. (Show a) => Runnable (String -> Either String a)
 
-defaultLangName = "CallByNeed"
+defaultLangName = "ContinuationPassing"
 
 lookupLang :: String -> Maybe Lang
 lookupLang name = lookup name supportedLangs
@@ -52,6 +53,7 @@ supportedLangs =
   , ("CallByReference", Runnable CallByReference.run)
   , ("CallByName", Runnable CallByName.run)
   , ("CallByNeed", Runnable CallByNeed.run)
+  , ("ContinuationPassing", Runnable CPassing.run)
   ]
 
 flushStr :: String -> IO ()
