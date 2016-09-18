@@ -35,6 +35,14 @@ testLet = TestList
              , "       y = -(x,2)"
              , "   in -(x,y)"
              ]
+  , testEq "Eval multi let items"
+           (ExprNum 3)
+           $ unlines
+             [ "let x = 0"
+             , "    y = 1"
+             , "    z = 2"
+             , "in +(x, +(y, z))"
+             ]
   , testEq "Eval letrec"
            (ExprNum 12)
            $ unlines
