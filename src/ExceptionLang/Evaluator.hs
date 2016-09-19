@@ -14,14 +14,11 @@ import           ExceptionLang.Parser
 type EvaluateResult = Try ExpressedValue
 
 applyCont :: Continuation -> ExpressedValue -> EvaluateResult
-applyCont EndCont val =
-  return val
-applyCont (UnaryOpCont func cont) val =
-  func val >>= applyCont cont
+applyCont EndCont val = return val
+applyCont (UnaryOpCont func cont) val = func val >>= applyCont cont
 applyCont (BinOpCont1 func expr2 env cont) val1 =
   valueOf expr2 env (BinOpCont2 func val1 cont)
-applyCont (BinOpCont2 func val1 cont) val2 =
-  func val1 val2 >>= applyCont cont
+applyCont (BinOpCont2 func val1 cont) val2 = func val1 val2 >>= applyCont cont
 applyCont (IfCont thenE elseE env cont) val = do
   bool <- unpackBool "Predicate of if expression" val
   let body = if bool then thenE else elseE
@@ -43,6 +40,22 @@ applyCont (RandCont [] rator randValsAcc env cont) val = do
   applyProcedure proc rands cont
 applyCont (RandCont (randExpr : randExprs) rator randValsAcc env cont) val =
   valueOf randExpr env (RandCont randExprs rator (val : randValsAcc) env cont)
+applyCont (TryCont _ _ _ cont) val = applyCont cont val
+applyCont (RaiseCont cont) val = handleException val cont
+
+handleException :: ExpressedValue -> Continuation -> EvaluateResult
+handleException val EndCont =
+  throwError $ "Unhandle exception: " `mappend` show val
+handleException val (TryCont ex handler env cont) =
+  valueOf handler (extend ex (exprToDeno val) env) cont
+handleException val (UnaryOpCont _ cont) = handleException val cont
+handleException val (BinOpCont1 _ _ _ cont) = handleException val cont
+handleException val (BinOpCont2 _ _ cont) = handleException val cont
+handleException val (IfCont _ _ _ cont) = handleException val cont
+handleException val (LetCont _ _ _ _ _ cont) = handleException val cont
+handleException val (RatorCont _ _ cont) = handleException val cont
+handleException val (RandCont _ _ _ _ cont) = handleException val cont
+handleException val (RaiseCont cont) = handleException val cont
 
 throwError :: String -> Try a
 throwError = Left
@@ -70,6 +83,8 @@ valueOf (UnaryOpExpr op e) env cont      = evalUnaryOpExpr op e env cont
 valueOf (IfExpr e1 e2 e3) env cont       = evalIfExpr e1 e2 e3 env cont
 valueOf (BinOpExpr op e1 e2) env cont    = evalBinOpExpr op e1 e2 env cont
 valueOf (CallExpr rator rand) env cont   = evalCallExpr rator rand env cont
+valueOf (TryExpr e1 ex e2) env cont      = evalTryExpr e1 ex e2 env cont
+valueOf (RaiseExpr expr) env cont        = evalRaiseExpr expr env cont
 
 exprToDeno :: ExpressedValue -> DenotedValue
 exprToDeno (ExprNum n)  = DenoNum n
@@ -225,3 +240,13 @@ applyProcedure :: Procedure -> [DenotedValue] -> Continuation
 applyProcedure (Procedure params body savedEnv) rands cont = do
   argPairs <- safeZip params rands
   valueOf body (extendMany argPairs savedEnv) cont
+
+evalTryExpr :: Expression -> String -> Expression -> Environment
+            -> Continuation
+            -> EvaluateResult
+evalTryExpr body ex handler env cont =
+  valueOf body env (TryCont ex handler env cont)
+
+evalRaiseExpr :: Expression -> Environment -> Continuation -> EvaluateResult
+evalRaiseExpr expr env cont = undefined
+

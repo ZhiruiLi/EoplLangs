@@ -39,6 +39,7 @@ reservedWords :: [String]
 reservedWords  =
   [ "let", "in", "if", "then", "else", "zero?", "minus"
   , "equal?", "greater?", "less?", "proc", "letrec"
+  , "try", "catch", "raise"
   ]
 
 binOpsMap :: [(String, BinOp)]
@@ -157,7 +158,6 @@ letRecExpr = do
       procBody <- expression
       return (procName, params, procBody)
 
-
 -- | ManyExprs ::= <empty>
 --             ::= Many1Exprs
 manyExprs :: Parser [Expression]
@@ -168,6 +168,7 @@ manyExprs = sepBy expression comma
 many1Exprs :: Parser [Expression]
 many1Exprs = sepBy1 expression comma
 
+-- | ProcExpr ::= proc ({Identifier}*) Expression
 procExpr :: Parser Expression
 procExpr = do
   _ <- keyWord "proc"
@@ -175,11 +176,28 @@ procExpr = do
   body <- expression
   return $ ProcExpr params body
 
+-- | CallExpr ::= (Expression {Expression}*)
 callExpr :: Parser Expression
 callExpr = parens $ do
   rator <- expression
   rand <- many expression
   return $ CallExpr rator rand
+
+-- | TryExpr ::= try Expression catch (Identifier) Expression
+tryExpr :: Parser Expression
+tryExpr = do
+  _ <- keyWord "try"
+  body <- expression
+  _ <- keyWord "catch"
+  exception <- parens identifier
+  handler <- expression
+  return $ TryExpr body exception handler
+
+-- | RaiseExpr ::= raise Expression
+raiseExpr :: Parser Expression
+raiseExpr = do
+  _ <- keyWord "raise"
+  RaiseExpr <$> expression
 
 -- | Expression ::= ConstExpr
 --              ::= BinOpExpr
@@ -189,6 +207,9 @@ callExpr = parens $ do
 --              ::= LetExpr
 --              ::= ProcExpr
 --              ::= CallExpr
+--              ::= TryExpr
+--              ::= LetRecExpr
+--              ::= RaiseExpr
 expression :: Parser Expression
 expression = foldl1 (<|>) (fmap try expressionList)
   where
@@ -202,6 +223,8 @@ expression = foldl1 (<|>) (fmap try expressionList)
       , procExpr
       , callExpr
       , letRecExpr
+      , tryExpr
+      , raiseExpr
       ]
 
 program :: Parser Program

@@ -52,6 +52,8 @@ data Continuation =
   | LetCont [Expression] [String] [ExpressedValue] Expression Environment Continuation
   | RatorCont [Expression] Environment Continuation
   | RandCont [Expression] ExpressedValue [ExpressedValue] Environment Continuation
+  | TryCont String Expression Environment Continuation
+  | RaiseCont Continuation
 
 data Program = Prog Expression
   deriving (Show, Eq)
@@ -66,6 +68,8 @@ data Expression =
   | ProcExpr [String] Expression
   | CallExpr Expression [Expression]
   | LetRecExpr [(String, [String], Expression)] Expression
+  | TryExpr Expression String Expression
+  | RaiseExpr Expression
   deriving(Show, Eq)
 
 data BinOp =

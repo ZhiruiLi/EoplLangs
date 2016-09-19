@@ -19,6 +19,7 @@ tests = TestList
   , TestLabel "Test expression" testExpression
   , TestLabel "Test parse program" testParseProgram
   , TestLabel "Test parse proc expression" testParseProc
+  , TestLabel "Test parse try expression" testParseTry
   ]
 
 constNum = ConstExpr . ExprNum
@@ -140,4 +141,14 @@ testParseProc = TestList
                (CallExpr (VarExpr "f") [CallExpr (VarExpr "f") [constNum 77]]))
              [ProcExpr ["x"] (BinOpExpr Sub (VarExpr "x") (constNum 11))])
            "(proc (f) (f (f 77)) proc (x) -(x,11))"
+  ]
+
+testParseTry :: Test
+testParseTry = TestList
+  [ testEq "Parse try expression"
+           (TryExpr (constNum 3) "abc" (VarExpr "x"))
+           "try 3 catch(abc) x"
+  , testEq "Parse raise expression"
+           (RaiseExpr (constNum 1))
+           "raise 1"
   ]
