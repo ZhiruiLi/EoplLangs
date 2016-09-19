@@ -9,6 +9,7 @@ import qualified CallByReference.Evaluator     as CallByReference
 import qualified ContinuationPassing.Evaluator as CPassing
 import           Data.Char                     (isSpace)
 import           Data.Maybe                    (fromMaybe)
+import qualified ExceptionLang.Evaluator       as Exception
 import qualified ExplicitRefs.Evaluator        as ExplicitRefs
 import qualified ImplicitRefs.Evaluator        as ImplicitRefs
 import qualified LetLang.Evaluator             as LetLang
@@ -22,7 +23,7 @@ import           Text.Megaparsec.String
 
 data Lang = forall a b. (Show a) => Runnable (String -> Either String a)
 
-defaultLangName = "ContinuationPassing"
+defaultLangName = "ExceptionLang"
 
 lookupLang :: String -> Maybe Lang
 lookupLang name = lookup name supportedLangs
@@ -54,6 +55,7 @@ supportedLangs =
   , ("CallByName", Runnable CallByName.run)
   , ("CallByNeed", Runnable CallByNeed.run)
   , ("ContinuationPassing", Runnable CPassing.run)
+  , ("ExceptionLang", Runnable Exception.run)
   ]
 
 flushStr :: String -> IO ()
