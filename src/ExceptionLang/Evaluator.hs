@@ -7,7 +7,6 @@ module ExceptionLang.Evaluator
 
 import           Control.Applicative  ((<|>))
 import           Control.Arrow        (second)
-import           Control.Monad        ((>=>))
 import           ExceptionLang.Data
 import           ExceptionLang.Parser
 
@@ -120,6 +119,31 @@ binNumToNumOpMap = [(Add, (+)), (Sub, (-)), (Mul, (*)), (Div, div)]
 binNumToBoolOpMap :: [(BinOp, Integer -> Integer -> Bool)]
 binNumToBoolOpMap = [(Gt, (>)), (Le, (<)), (Eq, (==))]
 
+unaryBoolOpMap :: [(UnaryOp, Bool -> Bool)]
+unaryBoolOpMap = []
+
+unaryNumToNumOpMap :: [(UnaryOp, Integer -> Integer)]
+unaryNumToNumOpMap = [(Minus, negate)]
+
+unaryNumToBoolOpMap :: [(UnaryOp, Integer -> Bool)]
+unaryNumToBoolOpMap = [(IsZero, (0 ==))]
+
+unpackNum :: String -> ExpressedValue -> Try Integer
+unpackNum _ (ExprNum n) = return n
+unpackNum caller notNum = throwError $ concat [
+  caller, ": Unpacking a not number value: ", show notNum ]
+
+unpackBool :: String -> ExpressedValue -> Try Bool
+unpackBool _ (ExprBool b) = return b
+unpackBool caller notBool = throwError $ concat [
+  caller, ": Unpacking a not boolean value: ", show notBool ]
+
+tryFind :: Eq a => String -> a -> [(a, b)] -> Try b
+tryFind err x pairs = liftMaybe err (lookup x pairs)
+
+tryFindOp :: (Eq a, Show a) => a -> [(a, b)] -> Try b
+tryFindOp op = tryFind ("Unknown operator: " `mappend` show op) op
+
 binOpConverter :: (String -> ExpressedValue -> Try a)
                -> (String -> ExpressedValue -> Try b)
                -> (c -> ExpressedValue)
@@ -140,25 +164,6 @@ binOps = concat [binNum2Num, binNum2Bool, binBool2Bool]
     b2bTrans = binOpConverter unpackBool unpackBool ExprBool
     binBool2Bool = fmap (second b2bTrans) binBoolOpMap
 
-unaryBoolOpMap :: [(UnaryOp, Bool -> Bool)]
-unaryBoolOpMap = []
-
-unaryNumToNumOpMap :: [(UnaryOp, Integer -> Integer)]
-unaryNumToNumOpMap = [(Minus, negate)]
-
-unaryNumToBoolOpMap :: [(UnaryOp, Integer -> Bool)]
-unaryNumToBoolOpMap = [(IsZero, (0 ==))]
-
-unpackNum :: String -> ExpressedValue -> Try Integer
-unpackNum _ (ExprNum n) = return n
-unpackNum caller notNum = throwError $ concat [
-  caller, ": Unpacking a not number value: ", show notNum ]
-
-unpackBool :: String -> ExpressedValue -> Try Bool
-unpackBool _ (ExprBool b) = return b
-unpackBool caller notBool = throwError $ concat [
-  caller, ": Unpacking a not boolean value: ", show notBool ]
-
 unaryOpConverter :: (String -> ExpressedValue -> Try a)
                  -> (b -> ExpressedValue)
                  -> (a -> b)
@@ -176,12 +181,6 @@ unaryOps = concat [unaryNum2Num, unaryNum2Bool, unaryBool2Bool]
     unaryNum2Bool = fmap (second n2bTrans) unaryNumToBoolOpMap
     b2bTrans = unaryOpConverter unpackBool ExprBool
     unaryBool2Bool = fmap (second b2bTrans) unaryBoolOpMap
-
-tryFind :: Eq a => String -> a -> [(a, b)] -> Try b
-tryFind err x pairs = liftMaybe err (lookup x pairs)
-
-tryFindOp :: (Eq a, Show a) => a -> [(a, b)] -> Try b
-tryFindOp op = tryFind ("Unknown operator: " `mappend` show op) op
 
 evalBinOpExpr :: BinOp -> Expression -> Expression -> Environment
               -> Continuation
