@@ -23,6 +23,7 @@ tests = TestList
   , testLet
   , testCond
   , testProc
+  , testTry
   ]
 
 testLet :: Test
@@ -89,6 +90,20 @@ testProc = TestList
            "let f = proc (x y z) + (x, * (y, z)) in (f 1 2 3)"
   , testError "Too many parameters" "(proc () 1 1)"
   , testError "Too many arguments" "(proc (x y) +(x, y) 1)"
+  ]
+
+testTry :: Test
+testTry = TestList
+  [ testError "Eval raise expression without handler should fail. 1"
+              "raise 1"
+  , testError "Eval raise expression without handler should fail. 2"
+              "try raise 1 catch(e) raise 2"
+  , testEq "Eval raise in try block should catch the exception."
+           (ExprNum 1)
+           "try raise 1 catch(e) e"
+  , testEq "An exception should be catched by nearest try block."
+           (ExprNum 1)
+           "try try raise 0 catch (e1) 1 catch (e2) 2"
   ]
 
 initEnv :: Environment

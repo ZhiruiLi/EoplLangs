@@ -248,5 +248,5 @@ evalTryExpr body ex handler env cont =
   valueOf body env (TryCont ex handler env cont)
 
 evalRaiseExpr :: Expression -> Environment -> Continuation -> EvaluateResult
-evalRaiseExpr expr env cont = undefined
+evalRaiseExpr expr env cont = valueOf expr env (RaiseCont cont)
 
