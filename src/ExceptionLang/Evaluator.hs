@@ -120,6 +120,26 @@ binNumToNumOpMap = [(Add, (+)), (Sub, (-)), (Mul, (*)), (Div, div)]
 binNumToBoolOpMap :: [(BinOp, Integer -> Integer -> Bool)]
 binNumToBoolOpMap = [(Gt, (>)), (Le, (<)), (Eq, (==))]
 
+binOpConverter :: (String -> ExpressedValue -> Try a)
+               -> (String -> ExpressedValue -> Try b)
+               -> (c -> ExpressedValue)
+               -> (a -> b -> c)
+               -> (ExpressedValue -> ExpressedValue -> EvaluateResult)
+binOpConverter unpack1 unpack2 trans func val1 val2 = do
+  va <- unpack1 "Binary operator" val1
+  vb <- unpack2 "Binary operator" val2
+  return . trans $ func va vb
+
+binOps :: [(BinOp, ExpressedValue -> ExpressedValue -> EvaluateResult)]
+binOps = concat [binNum2Num, binNum2Bool, binBool2Bool]
+  where
+    n2nTrans = binOpConverter unpackNum unpackNum ExprNum
+    binNum2Num = fmap (second n2nTrans) binNumToNumOpMap
+    n2bTrans = binOpConverter unpackNum unpackNum ExprBool
+    binNum2Bool = fmap (second n2bTrans) binNumToBoolOpMap
+    b2bTrans = binOpConverter unpackBool unpackBool ExprBool
+    binBool2Bool = fmap (second b2bTrans) binBoolOpMap
+
 unaryBoolOpMap :: [(UnaryOp, Bool -> Bool)]
 unaryBoolOpMap = []
 
@@ -139,6 +159,24 @@ unpackBool _ (ExprBool b) = return b
 unpackBool caller notBool = throwError $ concat [
   caller, ": Unpacking a not boolean value: ", show notBool ]
 
+unaryOpConverter :: (String -> ExpressedValue -> Try a)
+                 -> (b -> ExpressedValue)
+                 -> (a -> b)
+                 -> (ExpressedValue -> EvaluateResult)
+unaryOpConverter unpack trans func val = do
+  va <- unpack "Unary operator" val
+  return . trans $ func va
+
+unaryOps :: [(UnaryOp, ExpressedValue -> EvaluateResult)]
+unaryOps = concat [unaryNum2Num, unaryNum2Bool, unaryBool2Bool]
+  where
+    n2nTrans = unaryOpConverter unpackNum ExprNum
+    unaryNum2Num = fmap (second n2nTrans) unaryNumToNumOpMap
+    n2bTrans = unaryOpConverter unpackNum ExprBool
+    unaryNum2Bool = fmap (second n2bTrans) unaryNumToBoolOpMap
+    b2bTrans = unaryOpConverter unpackBool ExprBool
+    unaryBool2Bool = fmap (second b2bTrans) unaryBoolOpMap
+
 tryFind :: Eq a => String -> a -> [(a, b)] -> Try b
 tryFind err x pairs = liftMaybe err (lookup x pairs)
 
@@ -149,56 +187,15 @@ evalBinOpExpr :: BinOp -> Expression -> Expression -> Environment
               -> Continuation
               -> EvaluateResult
 evalBinOpExpr op expr1 expr2 env cont = do
-  func <- n2nFunc <|> n2bFunc <|> b2bFunc
+  func <- tryFindOp op binOps
   valueOf expr1 env (BinOpCont1 func expr2 env cont)
-  where
-    findOpFrom = tryFindOp op
-    unpackN = unpackNum $ "binary operation " `mappend` show op
-    unpackB = unpackBool $ "binary operation " `mappend` show op
-    n2nFunc :: Try (ExpressedValue -> ExpressedValue -> Try ExpressedValue)
-    n2nFunc = do
-      func <- findOpFrom binNumToNumOpMap
-      return (\val1 val2 -> do
-                n1 <- unpackN val1
-                n2 <- unpackN val2
-                return . ExprNum $ func n1 n2)
-    n2bFunc :: Try (ExpressedValue -> ExpressedValue -> Try ExpressedValue)
-    n2bFunc = do
-      func <- findOpFrom binNumToBoolOpMap
-      return (\val1 val2 -> do
-                n1 <- unpackN val1
-                n2 <- unpackN val2
-                return . ExprBool $ func n1 n2)
-    b2bFunc :: Try (ExpressedValue -> ExpressedValue -> Try ExpressedValue)
-    b2bFunc = do
-      func <- findOpFrom binBoolOpMap
-      return (\val1 val2 -> do
-                b1 <- unpackB val1
-                b2 <- unpackB val2
-                return . ExprBool $ func b1 b2)
 
 evalUnaryOpExpr :: UnaryOp -> Expression -> Environment
                 -> Continuation
                 -> EvaluateResult
 evalUnaryOpExpr op expr env cont = do
-  func <- n2nFunc <|> n2bFunc <|> b2bFunc
+  func <- tryFindOp op unaryOps
   valueOf expr env (UnaryOpCont func cont)
-  where
-    findOpFrom = tryFindOp op
-    unpackN = unpackNum $ "unary operation " `mappend` show op
-    unpackB = unpackBool $ "unary operation " `mappend` show op
-    n2nFunc :: Try (ExpressedValue -> Try ExpressedValue)
-    n2nFunc = do
-      func <- findOpFrom unaryNumToNumOpMap
-      return (unpackN >=> (return . ExprNum . func))
-    n2bFunc :: Try (ExpressedValue -> Try ExpressedValue)
-    n2bFunc = do
-      func <- findOpFrom unaryNumToBoolOpMap
-      return (unpackN >=> (return . ExprBool . func))
-    b2bFunc :: Try (ExpressedValue -> Try ExpressedValue)
-    b2bFunc = do
-      func <- findOpFrom unaryBoolOpMap
-      return (unpackB >=> (return . ExprBool . func))
 
 evalLetExpr :: [(String, Expression)] -> Expression -> Environment
             -> Continuation
