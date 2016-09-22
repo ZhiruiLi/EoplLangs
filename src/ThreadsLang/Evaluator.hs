@@ -36,7 +36,9 @@ applyCont store sch continuation val = do
                 Thread (applyCont store sch continuation val)
             ; runNextThread sch
             }
-    else applyCont' continuation
+    else do { liftIO $ decrementTime sch
+            ; applyCont' continuation
+            }
   where
     applyCont' EndCont = do
       liftIO $ setFinalResult sch val
@@ -68,7 +70,8 @@ applyCont store sch continuation val = do
     applyCont' (RatorCont (rand : rands) env cont) =
       valueOf rand env store sch (RandCont rands val [] env cont)
     applyCont' (RandCont (rand : rands) rator valsAcc env cont) =
-      valueOf rand env store sch (RandCont rands rator (val : valsAcc) env cont)
+      valueOf rand env store sch
+              (RandCont rands rator (val : valsAcc) env cont)
     applyCont' (RandCont [] rator valsAcc env cont) = do
       let rands = reverse (val : valsAcc)
       proc <- unpackProc rator
@@ -83,10 +86,8 @@ applyCont store sch continuation val = do
       valueOf expr env store sch (BeginCont exprs env cont)
     applyCont' (SpawnCont cont) = do
       proc <- unpackProc val
-      liftIO $ enqueueThread
-                 sch
-                 (Thread (applyProcedure
-                          store sch proc [] EndSubThreadCont))
+      let thread = Thread (applyProcedure store sch proc [] EndSubThreadCont)
+      liftIO $ enqueueThread sch thread
       applyCont store sch cont (ExprBool False)
 
 liftMaybe :: LangError -> Maybe a -> IOTry a
