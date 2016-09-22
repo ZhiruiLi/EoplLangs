@@ -206,11 +206,11 @@ testRef = TestList
 
 testEq :: String -> ExpressedValue -> String -> Test
 testEq msg expect input = TestCase $ do
-  evalRes <- runExceptT $ run input
+  evalRes <- run input
   assertEqual msg (Right expect) evalRes
 
 testErr :: String -> LangError -> String -> Test
 testErr msg expect input = TestCase $ do
-  evalRes <- runExceptT $ run input
+  evalRes <- run input
   assertEqual msg (Left expect) evalRes
 

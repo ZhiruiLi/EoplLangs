@@ -17,8 +17,8 @@ liftMaybe :: LangError -> Maybe a -> IOTry a
 liftMaybe _ (Just x) = return x
 liftMaybe y Nothing  = throwError y
 
-run :: String -> EvaluateResult
-run input = do
+run :: String -> IO (Try ExpressedValue)
+run input = runExceptT $ do
   prog <- liftTry (parseProgram input)
   store <- liftIO initStore
   evalProgram store prog
