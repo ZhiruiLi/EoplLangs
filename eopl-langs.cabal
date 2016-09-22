@@ -65,6 +65,10 @@ library
                      , ExceptionLang.Evaluator
                      , ExceptionLang.Parser
                      
+                     , ImplicitRefsCont.Data
+                     , ImplicitRefsCont.Evaluator
+                     , ImplicitRefsCont.Parser
+                     
   build-depends:       base 
                      , megaparsec
                      , containers

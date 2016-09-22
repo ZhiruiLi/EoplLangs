@@ -5,6 +5,7 @@ import qualified ContinuationPassing.Suites as CPassing
 import qualified ExceptionLang.Suites       as Exception
 import qualified ExplicitRefs.Suites        as Explicit
 import qualified ImplicitRefs.Suites        as Implicit
+import qualified ImplicitRefsCont.Suites    as ImplicitCont
 import qualified LetLang.Suites             as Let
 import qualified LetRecLang.Suites          as LetRec
 import qualified MutablePairs.Suites        as MutablePairs
@@ -27,5 +28,6 @@ main = do
     , CallByNeed.tests
     , CPassing.tests
     , Exception.tests
+    , ImplicitCont.tests
     ]
   return ()
