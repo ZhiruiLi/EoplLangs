@@ -69,11 +69,16 @@ library
                      , ImplicitRefsCont.Evaluator
                      , ImplicitRefsCont.Parser
                      
+                     , ThreadsLang.Data
+                     , ThreadsLang.Evaluator
+                     , ThreadsLang.Parser
+                     
   build-depends:       base 
                      , megaparsec
                      , containers
                      , transformers 
                      , mtl
+                     , lens
   default-language:    Haskell2010
 
 executable eopl-langs-exe
