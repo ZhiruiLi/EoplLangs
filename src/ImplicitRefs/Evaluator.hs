@@ -24,10 +24,10 @@ run input = runExceptT $ do
   evalProgram store prog
 
 evalProgram :: Store -> Program -> EvaluateResult
-evalProgram store (Prog expr) = eval expr store
+evalProgram store (Prog expr) = eval store expr
 
-eval :: Expression -> Store -> EvaluateResult
-eval expr = valueOf expr empty
+eval :: Store -> Expression -> EvaluateResult
+eval store expr = valueOf expr empty store
 
 valueOf :: Expression -> Environment -> Store -> EvaluateResult
 valueOf (ConstExpr x) _ _                = evalConstExpr x
