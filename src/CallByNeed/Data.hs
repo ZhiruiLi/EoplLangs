@@ -32,7 +32,7 @@ extendRecMany lst env = do
   where
     extendRecMany' [] [] env = return env
     extendRecMany' ((name, params, body):triples) (ref:refs) env = do
-      _ <- setRef ref (ExprProc $ Procedure params body env)
+      setRef ref (ExprProc $ Procedure params body env)
       extendRecMany' triples refs env
     allocMany 0 = return []
     allocMany x = do
@@ -68,7 +68,7 @@ newRef :: ExpressedValue -> StatedTry Ref
 newRef val = do
   store <- get
   let refList = refs store
-  _ <- put $ Store (val:refList)
+  put $ Store (val:refList)
   return . Ref . toInteger . length $ refList
 
 deRef :: Ref -> StatedTry ExpressedValue

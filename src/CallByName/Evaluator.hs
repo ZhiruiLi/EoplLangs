@@ -54,7 +54,7 @@ evalAssignExpr :: String -> Expression -> Environment -> EvaluateResult
 evalAssignExpr name expr env = do
   val <- valueOf expr env
   ref <- getRef env name
-  _ <- setRef ref val
+  setRef ref val
   return $ ExprBool False
 
 evalBeginExpr :: [Expression] -> Environment -> EvaluateResult
@@ -63,7 +63,7 @@ evalBeginExpr [] env = throwError
 evalBeginExpr exprs env = foldl func (return $ ExprBool False) exprs
   where
     func acc ele = do
-      _ <- acc
+      acc
       valueOf ele env
 
 evalExpressionList :: [Expression] -> Environment -> StatedTry [ExpressedValue]

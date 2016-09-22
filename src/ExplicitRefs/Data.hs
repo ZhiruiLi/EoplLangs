@@ -59,7 +59,7 @@ newRef :: ExpressedValue -> StatedTry Ref
 newRef val = do
   store <- get
   let refList = refs store
-  _ <- put $ Store (val:refList)
+  put $ Store (val:refList)
   return . Ref . toInteger . length $ refList
 
 deRef :: Ref -> StatedTry ExpressedValue

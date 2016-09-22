@@ -83,7 +83,7 @@ evalSetRightExpr pairExpr expr env = do
   pairVal <- valueOf pairExpr env
   pair <- unpackPair pairVal "setright"
   newVal <- valueOf expr env
-  _ <- setRight pair newVal
+  setRight pair newVal
   return $ ExprBool False
 
 evalSetDynamicExpr :: String -> Expression -> Expression -> Environment
@@ -92,9 +92,9 @@ evalSetDynamicExpr name expr body env = do
   ref <- getRef env name
   oldVal <- deRef ref
   newVal <- valueOf expr env
-  _ <- setRef ref newVal
+  setRef ref newVal
   result <- valueOf body env
-  _ <- setRef ref oldVal
+  setRef ref oldVal
   return result
 
 getRef :: Environment -> String -> StatedTry Ref
@@ -106,7 +106,7 @@ evalAssignExpr :: String -> Expression -> Environment -> EvaluateResult
 evalAssignExpr name expr env = do
   val <- valueOf expr env
   ref <- getRef env name
-  _ <- setRef ref val
+  setRef ref val
   return $ ExprBool False
 
 evalBeginExpr :: [Expression] -> Environment -> EvaluateResult
@@ -115,7 +115,7 @@ evalBeginExpr [] env = throwError
 evalBeginExpr exprs env = foldl func (return $ ExprBool False) exprs
   where
     func acc ele = do
-      _ <- acc
+      acc
       valueOf ele env
 
 evalExpressionList :: [Expression] -> Environment -> StatedTry [ExpressedValue]

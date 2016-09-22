@@ -85,7 +85,7 @@ signedInteger = L.signed spaceConsumer integer
 expressionPair :: Parser (Expression, Expression)
 expressionPair = parens $ do
   expr1 <- expression
-  _ <- comma
+  comma
   expr2 <- expression
   return (expr1, expr2)
 
@@ -110,11 +110,11 @@ unaryOpExpr = do
 -- | IfExpr ::= if Expression then Expression
 ifExpr :: Parser Expression
 ifExpr = do
-  _ <- keyWord "if"
+  keyWord "if"
   ifE <- expression
-  _ <- keyWord "then"
+  keyWord "then"
   thenE <- expression
-  _ <- keyWord "else"
+  keyWord "else"
   elseE <- expression
   return $ IfExpr ifE thenE elseE
 
@@ -125,18 +125,18 @@ varExpr = VarExpr <$> identifier
 -- | LetExpr ::= let Identifier = Expression in Expression
 letExpr :: Parser Expression
 letExpr = do
-  _ <- keyWord "let"
+  keyWord "let"
   var <- identifier
-  _ <- equal
+  equal
   val <- expression
-  _ <- keyWord "in"
+  keyWord "in"
   body <- expression
   return $ LetExpr var val body
 
 -- | ProcExpr ::= proc (Identifier) = Expression
 procExpr :: Parser Expression
 procExpr = do
-  _ <- keyWord "proc"
+  keyWord "proc"
   param <- parens identifier
   body <- expression
   return $ ProcExpr param body
@@ -152,25 +152,25 @@ callExpr = parens $ do
 -- | CondExpr ::= cond {Expression ==> Expression}* end
 condExpr :: Parser Expression
 condExpr = do
-  _ <- keyWord "cond"
+  keyWord "cond"
   pairs <- many $ try pair
-  _ <- keyWord "end"
+  keyWord "end"
   return $ CondExpr pairs
   where
     pair = do e1 <- expression
-              _ <- longArrow
+              longArrow
               e2 <- expression
               return (e1, e2)
 
 -- | LetRecExpr ::= letrec Identifier (Identifier) = Expression in Expression
 letRecExpr :: Parser Expression
 letRecExpr = do
-  _ <- keyWord "letrec"
+  keyWord "letrec"
   procName <- identifier
   param <- parens identifier
-  _ <- equal
+  equal
   procBody <- expression
-  _ <- keyWord "in"
+  keyWord "in"
   body <- expression
   return $ LetRecExpr procName param procBody body
 
@@ -201,7 +201,7 @@ expression = foldl1 (<|>) (fmap try expressionList)
 
 program :: Parser Program
 program = do
-  _ <- spaceConsumer
+  spaceConsumer
   expr <- expression
-  _ <- eof
+  eof
   return $ Prog expr

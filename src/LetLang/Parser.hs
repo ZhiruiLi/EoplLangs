@@ -83,7 +83,7 @@ integer = lexeme L.integer
 expressionPair :: Parser (Expression, Expression)
 expressionPair = parens $ do
   expr1 <- expression
-  _ <- comma
+  comma
   expr2 <- expression
   return (expr1, expr2)
 
@@ -108,11 +108,11 @@ unaryOpExpr = do
 -- | IfExpr ::= if Expression then Expression
 ifExpr :: Parser Expression
 ifExpr = do
-  _ <- keyWord "if"
+  keyWord "if"
   ifE <- expression
-  _ <- keyWord "then"
+  keyWord "then"
   thenE <- expression
-  _ <- keyWord "else"
+  keyWord "else"
   elseE <- expression
   return $ CondExpr [(ifE, thenE), (ConstExpr (ExprBool True), elseE)]
 
@@ -133,15 +133,15 @@ letFamilyExpr :: String
               ->  ([(String, Expression)] -> Expression -> Expression)
               -> Parser Expression
 letFamilyExpr letType builder = do
-  _ <- keyWord letType
+  keyWord letType
   bindings <- many binding
-  _ <- keyWord "in"
+  keyWord "in"
   body <- expression
   return $ builder bindings body
   where
     binding = try $ do
       var <- identifier
-      _ <- equal
+      equal
       val <- expression
       return (var, val)
 
@@ -158,7 +158,7 @@ many1Exprs = sepBy1 expression comma
 -- | ListExpr ::= list (ListItems)
 listExpr :: Parser Expression
 listExpr = do
-  _ <- keyWord "list"
+  keyWord "list"
   ListExpr <$> parens manyExprs
 
 -- | EmptyListExpr ::= emptyList
@@ -168,14 +168,14 @@ emptyListExpr = keyWord "emptyList" >> return EmptyListExpr
 -- | CondExpr ::= cond {Expression ==> Expression}* end
 condExpr :: Parser Expression
 condExpr = do
-  _ <- keyWord "cond"
+  keyWord "cond"
   pairs <- many pair
-  _ <- keyWord "end"
+  keyWord "end"
   return $ CondExpr pairs
   where
     pair = try $ do
       expr1 <- expression
-      _ <- longArrow
+      longArrow
       expr2 <- expression
       return (expr1, expr2)
 
@@ -204,7 +204,7 @@ expression = try constExpr
 
 program :: Parser Program
 program = do
-  _ <- spaceConsumer
+  spaceConsumer
   expr <- expression
-  _ <- eof
+  eof
   return $ Prog expr

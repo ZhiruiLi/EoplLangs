@@ -85,7 +85,7 @@ signedInteger = L.signed spaceConsumer integer
 expressionPair :: Parser (Expression, Expression)
 expressionPair = parens $ do
   expr1 <- expression
-  _ <- comma
+  comma
   expr2 <- expression
   return (expr1, expr2)
 
@@ -110,11 +110,11 @@ unaryOpExpr = do
 -- | IfExpr ::= if Expression then Expression
 ifExpr :: Parser Expression
 ifExpr = do
-  _ <- keyWord "if"
+  keyWord "if"
   ifE <- expression
-  _ <- keyWord "then"
+  keyWord "then"
   thenE <- expression
-  _ <- keyWord "else"
+  keyWord "else"
   elseE <- expression
   return $ IfExpr ifE thenE elseE
 
@@ -130,31 +130,31 @@ letFamilyExpr :: String
               ->  ([(String, Expression)] -> Expression -> Expression)
               -> Parser Expression
 letFamilyExpr letType builder = do
-  _ <- keyWord letType
+  keyWord letType
   bindings <- many binding
-  _ <- keyWord "in"
+  keyWord "in"
   body <- expression
   return $ builder bindings body
   where
     binding = try $ do
       var <- identifier
-      _ <- equal
+      equal
       val <- expression
       return (var, val)
 
 -- | LetrecExpr ::= letrec {Identifier (Identifier) = Expression} in Expression
 letRecExpr :: Parser Expression
 letRecExpr = do
-  _ <- keyWord "letrec"
+  keyWord "letrec"
   procBindings <- many procBinding
-  _ <- keyWord "in"
+  keyWord "in"
   recBody <- expression
   return $ LetRecExpr procBindings recBody
   where
     procBinding = try $ do
       procName <- identifier
       params <- parens (sepBy identifier comma)
-      _ <- equal
+      equal
       procBody <- expression
       return (procName, params, procBody)
 
@@ -171,7 +171,7 @@ many1Exprs = sepBy1 expression comma
 -- | ProcExpr ::= proc ({Identifier}*) Expression
 procExpr :: Parser Expression
 procExpr = do
-  _ <- keyWord "proc"
+  keyWord "proc"
   params <- parens . many $ identifier
   body <- expression
   return $ ProcExpr params body
@@ -186,9 +186,9 @@ callExpr = parens $ do
 -- | TryExpr ::= try Expression catch (Identifier) Expression
 tryExpr :: Parser Expression
 tryExpr = do
-  _ <- keyWord "try"
+  keyWord "try"
   body <- expression
-  _ <- keyWord "catch"
+  keyWord "catch"
   exception <- parens identifier
   handler <- expression
   return $ TryExpr body exception handler
@@ -196,7 +196,7 @@ tryExpr = do
 -- | RaiseExpr ::= raise Expression
 raiseExpr :: Parser Expression
 raiseExpr = do
-  _ <- keyWord "raise"
+  keyWord "raise"
   RaiseExpr <$> expression
 
 -- | Expression ::= ConstExpr
@@ -229,7 +229,7 @@ expression = foldl1 (<|>) (fmap try expressionList)
 
 program :: Parser Program
 program = do
-  _ <- spaceConsumer
+  spaceConsumer
   expr <- expression
-  _ <- eof
+  eof
   return $ Prog expr

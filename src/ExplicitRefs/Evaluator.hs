@@ -48,7 +48,7 @@ evalSetRefExpr expr1 expr2 env = do
   refVal <- valueOf expr1 env
   ref <- unpackRef refVal
   newVal <- valueOf expr2 env
-  _ <- setRef ref newVal
+  setRef ref newVal
   return newVal
   where
     unpackRef (ExprRef ref) = return ref
@@ -77,7 +77,7 @@ evalBeginExpr [] env = throwError
 evalBeginExpr exprs env = foldl func (return $ ExprBool False) exprs
   where
     func acc ele = do
-      _ <- acc
+      acc
       valueOf ele env
 
 evalExpressionList :: [Expression] -> Environment -> StatedTry [ExpressedValue]
