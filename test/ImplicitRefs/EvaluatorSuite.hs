@@ -2,6 +2,7 @@ module ImplicitRefs.EvaluatorSuite
 ( tests
 ) where
 
+import           Control.Monad.Except
 import           Control.Monad.Trans.State.Lazy (evalStateT)
 import           Data.List                      (stripPrefix)
 import           ImplicitRefs.Data
@@ -12,38 +13,72 @@ import           Text.Megaparsec
 
 tests :: Test
 tests = TestList
-  [ testEq "Eval const" (ExprNum 3) "3"
-  , testEq "Eval bounded var" (ExprNum 5) "let v = 5 in v"
-  , testNoBound "Eval no-bounded var" "let x = 5 in y"
-  , testEq "Eval binary num-to-num operator" (ExprNum 5) "-(10, 5)"
-  , testEq "Eval binary num-to-bool operator (true case)"
-           (ExprBool True) "greater?(4, 3)"
-  , testEq "Eval binary num-to-bool operator (false case)"
-           (ExprBool False) "less?(5,2)"
-  , testEq "Eval minus" (ExprNum (-1)) "minus(1)"
+  [ testBasic
+  , testOps
   , testLet
   , testCond
   , testProc
   , testRef
   ]
 
+testBasic :: Test
+testBasic = TestList
+  [ testEq "Eval const" (ExprNum 3) "3"
+  , testEq "Eval bounded var" (ExprNum 5) "let v = 5 in v"
+  , testErr "Eval no-bounded var" (UnboundVar "y") "let x = 5 in y"
+  ]
+
+testOps :: Test
+testOps = TestList
+  [ testEq "Eval binary num-to-num operator 1" (ExprNum 5) "-(10, 5)"
+  , testEq "Eval binary num-to-num operator 2" (ExprNum 15) "+(10, 5)"
+  , testEq "Eval binary num-to-bool operator (true case)"
+           (ExprBool True) "greater?(4, 3)"
+  , testEq "Eval binary num-to-bool operator (false case)"
+           (ExprBool False) "less?(5,2)"
+  , testEq "Eval unary operator" (ExprNum (-1)) "minus(1)"
+  ]
+
 testLet :: Test
 testLet = TestList
-  [ testEq "Eval let"
+  [ testEq "Eval let expression"
            (ExprNum 2)
            $ unlines
              [ "let x = 30"
              , "in let y = -(x,2)"
              , "   in -(x,y)"
              ]
-  , testEq "Eval letrec"
+  , testEq "Eval let with multi bindings 1"
+           (ExprNum 1)
+           $ unlines
+             [ "let x = 1"
+             , "    y = 2"
+             , "    z = 3"
+             , "in x"
+             ]
+  , testEq "Eval let with multi bindings 2"
+           (ExprNum 3)
+           $ unlines
+             [ "let x = 1"
+             , "    y = 2"
+             , "    z = 3"
+             , "in z"
+             ]
+  , testEq "Eval let expression with variable shadowing"
+           (ExprNum 2)
+           $ unlines
+             [ "let x = 1"
+             , "in let x = 2"
+             , "   in x"
+             ]
+  , testEq "Eval letrec with recursion"
            (ExprNum 12)
            $ unlines
              [ "letrec double(x)"
              , "        = if zero?(x) then 0 else -((double -(x,1)), -2)"
              , "in (double 6)"
              ]
-  , testEq "Eval co-recursion"
+  , testEq "Eval letrec with co-recursion"
            (ExprNum 1)
            $ unlines
              [ "letrec"
@@ -80,9 +115,12 @@ testCond = TestList
   , testEq "Eval false branch of if expression"
            (ExprNum 4)
            "if zero? (5) then 3 else 4"
-  , testError "Empty condition expression should fail" "cond end"
-  , testError "A condition expression with no true predicate should fail"
-              "cond zero?(5) ==> 3 greater?(5, 10) ==> 4 end"
+  , testErr "Empty condition expression should fail"
+            (RuntimeError "No predicate is true.")
+            "cond end"
+  , testErr "A condition expression with no true predicate should fail"
+            (RuntimeError "No predicate is true.")
+            "cond zero?(5) ==> 3 greater?(5, 10) ==> 4 end"
   , testEq "Match first condition"
            (ExprNum 1)
            "cond zero?(0) ==> 1 zero?(0) ==> 2 zero?(0) ==> 3 end"
@@ -105,8 +143,12 @@ testProc = TestList
   , testEq "Eval named proc"
            (ExprNum 7)
            "let f = proc (x y z) + (x, * (y, z)) in (f 1 2 3)"
-  , testError "Too many parameters" "(proc () 1 1)"
-  , testError "Too many arguments" "(proc (x y) +(x, y) 1)"
+  , testErr "Too many parameters"
+            (ArgNumMismatch 0 [ExprNum 1])
+            "(proc () 1 1)"
+  , testErr "Too many arguments"
+            (ArgNumMismatch 2 [ExprNum 1])
+            "(proc (x y) +(x, y) 1)"
   ]
 
 testRef :: Test
@@ -162,41 +204,13 @@ testRef = TestList
              ]
   ]
 
-initEnv :: Environment
-initEnv = empty
-
 testEq :: String -> ExpressedValue -> String -> Test
-testEq msg expect input = TestCase $
+testEq msg expect input = TestCase $ do
+  evalRes <- runExceptT $ run input
   assertEqual msg (Right expect) evalRes
-  where
-    evalRes = case runParser expression "Test equal case" input of
-      Right pRes  -> evalStateT (valueOf pRes initEnv) initStore
-      Left pError -> Left $ show pError
 
-testError :: String -> String -> Test
-testError msg input = TestCase $
-  assertBool msg evalRes
-  where
-    evalRes = case runParser expression "Test equal case" input of
-      Right pRes  ->
-        case evalStateT (valueOf pRes initEnv) initStore of
-          Left _  -> True
-          Right _ -> False
-      Left _ -> False
-
-
-testNoBound :: String -> String -> Test
-testNoBound msg input = TestCase $
-  assertEqual msg noBound True
-  where
-    noBound = case runParser expression "Test nobound case" input of
-      Right pRes ->
-        case evalStateT (valueOf pRes initEnv) initStore of
-          Left s ->
-            case stripPrefix "Not in scope: " s of
-              Nothing -> False
-              _       -> True
-          _ -> False
-      _ -> False
-
+testErr :: String -> LangError -> String -> Test
+testErr msg expect input = TestCase $ do
+  evalRes <- runExceptT $ run input
+  assertEqual msg (Left expect) evalRes
 

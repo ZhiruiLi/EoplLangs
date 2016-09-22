@@ -1,10 +1,10 @@
 module ImplicitRefs.Data where
 
-import           Control.Monad.Trans.State.Lazy
-import qualified Data.Map                       as M
-import           Data.Maybe                     (fromMaybe)
-
-type Try = Either String
+import           Control.Monad.Except
+import           Data.IORef
+import qualified Data.Map             as M
+import           Data.Maybe           (fromMaybe)
+import qualified Text.Megaparsec      as Mega
 
 type Environment = M.Map String DenotedValue
 
@@ -17,13 +17,13 @@ initEnvironment = M.fromList
 extend :: String -> DenotedValue -> Environment -> Environment
 extend = M.insert
 
-extendRec :: String -> [String] -> Expression -> Environment
-          -> StatedTry Environment
-extendRec name params body = extendRecMany [(name, params, body)]
+extendRec :: Store -> String -> [String] -> Expression -> Environment
+          -> IOTry Environment
+extendRec store name params body = extendRecMany store [(name, params, body)]
 
-extendRecMany :: [(String, [String], Expression)] -> Environment
-              -> StatedTry Environment
-extendRecMany lst env = do
+extendRecMany :: Store -> [(String, [String], Expression)] -> Environment
+              -> IOTry Environment
+extendRecMany store lst env = do
   refs <- allocMany (length lst)
   let denoVals = fmap DenoRef refs
   let names = fmap (\(n, _, _) -> n) lst
@@ -32,11 +32,11 @@ extendRecMany lst env = do
   where
     extendRecMany' [] [] env = return env
     extendRecMany' ((name, params, body):triples) (ref:refs) env = do
-      _ <- setRef ref (ExprProc $ Procedure params body env)
+      setRef store ref (ExprProc $ Procedure params body env)
       extendRecMany' triples refs env
     allocMany 0 = return []
     allocMany x = do
-      ref <- newRef (ExprBool False) -- dummy value false for allocating space
+      ref <- newRef store (ExprBool False) -- dummy value false for allocating space
       (ref:) <$> allocMany (x - 1)
 
 apply :: Environment -> String -> Maybe DenotedValue
@@ -52,46 +52,47 @@ applyForce env var = fromMaybe
   (error $ "Var " `mappend` var `mappend` " is not in environment!")
   (apply env var)
 
-newtype Ref = Ref { addr::Integer } deriving(Show, Eq)
+newtype Ref = Ref { addr::Integer } deriving (Show, Eq)
 
-newtype Store = Store { refs::[ExpressedValue] } deriving(Show)
+type Store = IORef [ExpressedValue]
 
-type StatedTry = StateT Store (Either String)
+type Try = Either LangError
 
-throwError :: String -> StatedTry a
-throwError msg = StateT (\s -> Left msg)
+type IOTry = ExceptT LangError IO
 
-initStore :: Store
-initStore = Store []
+liftTry :: Try a -> IOTry a
+liftTry (Left  err) = throwError err
+liftTry (Right val) = return val
 
-newRef :: ExpressedValue -> StatedTry Ref
-newRef val = do
-  store <- get
-  let refList = refs store
-  _ <- put $ Store (val:refList)
-  return . Ref . toInteger . length $ refList
+initStore :: IO Store
+initStore = newIORef []
 
-deRef :: Ref -> StatedTry ExpressedValue
-deRef (Ref r) = do
-  store <- get
-  let refList = refs store
-  findVal r (reverse refList)
+newRef :: Store -> ExpressedValue -> IOTry Ref
+newRef store val = do
+  vals <- liftIO $ readIORef store
+  liftIO $ atomicWriteIORef store (val:vals)
+  return . Ref . toInteger . length $ vals
+
+deRef :: Store -> Ref -> IOTry ExpressedValue
+deRef store (Ref r) = do
+  vals <- liftIO $ readIORef store
+  findVal r (reverse vals)
   where
+    findVal :: Integer -> [ExpressedValue] -> IOTry ExpressedValue
     findVal 0 (x:_)  = return x
-    findVal 0 []     = throwError "Index out of bound when calling deref!"
+    findVal 0 []     = throwError $ IndexOutOfBound "deref"
     findVal i (_:xs) = findVal (i - 1) xs
 
-setRef :: Ref -> ExpressedValue -> StatedTry ()
-setRef ref val = do
-  store <- get
-  let refList = refs store
-  let i = addr ref
-  newList <- reverse <$> setRefVal i (reverse refList) val
-  put $ Store newList
-  return ()
+setRef :: Store -> Ref -> ExpressedValue -> IOTry ()
+setRef store ref val = do
+  vals <- liftIO $ readIORef store
+  newVals <- reverse <$> setRefVal (addr ref) (reverse vals) val
+  liftIO $ writeIORef store newVals
   where
-    setRefVal _ [] _       = throwError "Index out of bound when calling setref!"
+    setRefVal :: Integer -> [ExpressedValue] -> ExpressedValue
+              -> IOTry [ExpressedValue]
     setRefVal 0 (_:xs) val = return (val:xs)
+    setRefVal _ [] _       = throwError $ IndexOutOfBound "setref"
     setRefVal i (x:xs) val = (x:) <$> setRefVal (i - 1) xs val
 
 data Program = Prog Expression
@@ -113,14 +114,14 @@ data Expression =
   | RefExpr String
   | DeRefExpr String
   | SetRefExpr String Expression
-  deriving(Show, Eq)
+  deriving (Show, Eq)
 
 data BinOp =
   Add | Sub | Mul | Div | Gt | Le | Eq
-  deriving(Show, Eq)
+  deriving (Show, Eq)
 
 data UnaryOp = Minus | IsZero
-  deriving(Show, Eq)
+  deriving (Show, Eq)
 
 data Procedure = Procedure [String] Expression Environment
 
@@ -152,3 +153,13 @@ instance Show DenotedValue where
 instance Eq DenotedValue where
   DenoRef v1 == DenoRef v2 = v1 == v2
 
+data LangError =
+    ParseError (Mega.ParseError (Mega.Token String) Mega.Dec)
+  | TypeMismatch String ExpressedValue
+  | IndexOutOfBound String
+  | ArgNumMismatch Integer [ExpressedValue]
+  | UnknownOperator String
+  | UnboundVar String
+  | RuntimeError String
+  | DefaultError String
+  deriving (Show, Eq)
