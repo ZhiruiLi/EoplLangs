@@ -129,7 +129,9 @@ data Procedure = Procedure [String] Expression Environment
 instance Show Procedure where
   show _ = "<procedure>"
 
-data Mutex = Mutex Bool [Thread]
+data Mutex = Mutex MutexState [Thread]
+
+data MutexState = Open | Closed deriving (Show, Eq)
 
 instance Show Mutex where
   show (Mutex isLock threads) = concat

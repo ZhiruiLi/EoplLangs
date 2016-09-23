@@ -115,7 +115,11 @@ unpackExprRef notRef        = throwError $ TypeMismatch "reference" notRef
 
 unpackProc :: ExpressedValue -> IOTry Procedure
 unpackProc (ExprProc proc) = return proc
-unpackProc noProc          = throwError $ TypeMismatch "procedure" noProc
+unpackProc notProc         = throwError $ TypeMismatch "procedure" notProc
+
+unpackMutex :: ExpressedValue -> IOTry Mutex
+unpackMutex (ExprMutex mut) = return mut
+unpackMutex notMutex        = throwError $ TypeMismatch "mutex" notMutex
 
 evalConstExpr :: ExpressedValue -> Store -> Scheduler -> Continuation
               -> EvaluateResult
@@ -195,8 +199,25 @@ unaryOpConverter unpack trans func val = do
   va <- unpack val
   return . trans $ func va
 
+nullOps :: [(NullOp, EvaluateResult)]
+nullOps = []
+
+operateWait :: ExpressedValue -> EvaluateResult
+operateWait val = undefined
+
+operateSignal :: ExpressedValue -> EvaluateResult
+operateSignal val = undefined
+
+specialUnaryOps :: [(UnaryOp, ExpressedValue -> EvaluateResult)]
+specialUnaryOps = [ (Wait, operateWait), (Signal, operateSignal) ]
+
 unaryOps :: [(UnaryOp, ExpressedValue -> EvaluateResult)]
-unaryOps = concat [unaryNum2Num, unaryNum2Bool, unaryBool2Bool]
+unaryOps = concat
+  [ unaryNum2Num
+  , unaryNum2Bool
+  , unaryBool2Bool
+  , specialUnaryOps
+  ]
   where
     n2nTrans = unaryOpConverter unpackNum ExprNum
     unaryNum2Num = fmap (second n2nTrans) unaryNumToNumOpMap
@@ -218,6 +239,14 @@ evalUnaryOpExpr :: UnaryOp -> Expression
 evalUnaryOpExpr op expr env store scheduler cont = do
   func <- tryFindOp op unaryOps
   valueOf expr env store scheduler (UnaryOpCont func cont)
+
+newMutex :: Store -> IOTry Ref
+newMutex store = newRef store (ExprMutex (Mutex Open []))
+
+evalNullOpExpr :: NullOp -> Environment -> Store ->Scheduler -> Continuation
+               -> EvaluateResult
+evalNullOpExpr op env store scheduler cont = case op of
+  Mut -> newMutex store >>= (applyCont store scheduler cont . ExprRef)
 
 evalIfExpr :: Expression -> Expression -> Expression
            -> Environment -> Store -> Scheduler -> Continuation
