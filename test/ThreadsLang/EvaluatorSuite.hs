@@ -168,24 +168,28 @@ testSpawn = TestList
            $ unlines
              [ "let x = 0 in"
              , "let incX = proc() set x = + (x, 1) in"
-             , "letrec wait(n) = proc() if zero?(n) then 1 else (wait -(n, 1)) in"
-             , "begin spawn(incX);"
-             , "      (wait 100);"
+             , "letrec buzyWait(n) = "
+             , "         proc() "
+             , "           if zero?(n) then 1 else (buzyWait -(n, 1)) "
+             , "in begin spawn(incX);"
+             , "      (buzyWait 100);"
              , "      x"
-             , "end"
+             , "   end"
              ]
   , testEq "Test spawn 2"
            (ExprNum 3)
            $ unlines
              [ "let x = 0 in"
              , "let incX = proc() set x = + (x, 1) in"
-             , "letrec wait(n) = proc() if zero?(n) then 1 else (wait -(n, 1)) in"
-             , "begin spawn(incX);"
+             , "letrec buzyWait(n) = "
+             , "         proc() "
+             , "           if zero?(n) then 1 else (buzyWait -(n, 1)) "
+             , "in begin spawn(incX);"
              , "      spawn(incX);"
              , "      spawn(incX);"
-             , "      (wait 100);"
+             , "      (buzyWait 100);"
              , "      x"
-             , "end"
+             , "   end"
              ]
   ]
 
