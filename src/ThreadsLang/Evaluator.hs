@@ -101,6 +101,7 @@ valueOf (VarExpr var) env s sch c = evalVarExpr var env s sch c
 valueOf (LetRecExpr ps body) env s sch c = evalLetRecExpr ps body env s sch c
 valueOf (BinOpExpr op e1 e2) env s sch c = evalBinOpExpr op e1 e2 env s sch c
 valueOf (UnaryOpExpr op expr) env s sch c = evalUnaryOpExpr op expr env s sch c
+valueOf (NullOpExpr op) env s sch c = evalNullOpExpr op env s sch c
 valueOf (IfExpr e1 e2 e3) env s sch c = evalIfExpr e1 e2 e3 env s sch c
 valueOf (LetExpr binds body) env s sch c = evalLetExpr binds body env s sch c
 valueOf (ProcExpr params body) env s sch c = evalProcExpr params body env s sch c
@@ -243,7 +244,7 @@ evalUnaryOpExpr op expr env store scheduler cont = do
 newMutex :: Store -> IOTry Ref
 newMutex store = newRef store (ExprMutex (Mutex Open []))
 
-evalNullOpExpr :: NullOp -> Environment -> Store ->Scheduler -> Continuation
+evalNullOpExpr :: NullOp -> Environment -> Store -> Scheduler -> Continuation
                -> EvaluateResult
 evalNullOpExpr op env store scheduler cont = case op of
   Mut -> newMutex store >>= (applyCont store scheduler cont . ExprRef)
