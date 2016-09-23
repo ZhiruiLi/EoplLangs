@@ -13,6 +13,7 @@ tests = TestList
   [ TestLabel "Test const expression" testConstExpr
   , TestLabel "Test binary-operator expression" testBinOpExpr
   , TestLabel "Test unary-operator expression" testUnaryOpExpr
+  , TestLabel "Test null-operator expression" testNullOpExpr
   , TestLabel "Test condition expression" testCondExpr
   , TestLabel "Test var expression" testVarExpr
   , TestLabel "Test let expression" testLetExpr
@@ -71,6 +72,11 @@ testUnaryOpExpr = TestList
            (UnaryOpExpr IsZero (constNum 3)) "zero? ( 3  )"
   , testEq "Parse minus expression"
            (UnaryOpExpr Minus (constNum 1)) "minus(1)"
+  ]
+
+testNullOpExpr :: Test
+testNullOpExpr = TestList
+  [ testEq "Parse mutex expression" (NullOpExpr Mut) "mutex()"
   ]
 
 testCondExpr :: Test

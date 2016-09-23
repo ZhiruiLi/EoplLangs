@@ -8,7 +8,6 @@ module ThreadsLang.Evaluator
 import           Control.Applicative  ((<|>))
 import           Control.Arrow        (second)
 import           Control.Monad.Except
-import           Debug.Trace          (trace)
 import           ThreadsLang.Data
 import           ThreadsLang.Parser
 

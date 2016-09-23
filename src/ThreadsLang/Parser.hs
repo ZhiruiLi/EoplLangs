@@ -41,8 +41,16 @@ reservedWords :: [String]
 reservedWords  =
   [ "let", "in", "if", "then", "else", "zero?", "minus"
   , "equal?", "greater?", "less?", "proc", "letrec", "begin", "set"
-  , "spawn"
+  , "spawn", "mutex", "wait", "signal"
   ]
+
+genOpParser :: Show a => [(String, a)] -> Parser a
+genOpParser opsMap = do
+  opStr <- foldl1 (<|>) (fmap (try . symbol . fst) opsMap)
+  return $ fromMaybe
+    (error ("Unknown operator '" `mappend` opStr `mappend` "'"))
+    (lookup opStr opsMap)
+
 
 binOpsMap :: [(String, BinOp)]
 binOpsMap =
@@ -50,22 +58,20 @@ binOpsMap =
   , ("greater?", Gt), ("less?", Le) ]
 
 binOp :: Parser BinOp
-binOp = do
-  opStr <- foldl1 (<|>) (fmap (try . symbol . fst) binOpsMap)
-  return $ fromMaybe
-    (error ("Unknown operator '" `mappend` opStr `mappend` "'"))
-    (lookup opStr binOpsMap)
+binOp = genOpParser binOpsMap
 
 unaryOpsMap :: [(String, UnaryOp)]
 unaryOpsMap =
-  [ ("minus", Minus), ("zero?", IsZero) ]
+  [ ("minus", Minus), ("zero?", IsZero), ("wait", Wait), ("signal", Signal) ]
 
 unaryOp :: Parser UnaryOp
-unaryOp = do
-  opStr <- foldl1 (<|>) (fmap (try . symbol . fst) unaryOpsMap)
-  return $ fromMaybe
-    (error ("Unknown operator '" `mappend` opStr `mappend` "'"))
-    (lookup opStr unaryOpsMap)
+unaryOp = genOpParser unaryOpsMap
+
+nullOpsMap :: [(String, NullOp)]
+nullOpsMap = [ ("mutex", Mut) ]
+
+nullOp :: Parser NullOp
+nullOp = genOpParser nullOpsMap
 
 -- | Identifier ::= String (without reserved words)
 identifier :: Parser String
@@ -111,6 +117,13 @@ unaryOpExpr = do
   op <- unaryOp
   expr <- parens expression
   return $ UnaryOpExpr op expr
+
+-- | NullOpExpr ::= NullOp ()
+nullOpExpr :: Parser Expression
+nullOpExpr = do
+  op <- nullOp
+  parens space
+  return $ NullOpExpr op
 
 -- | IfExpr ::= if Expression then Expression
 ifExpr :: Parser Expression
@@ -221,6 +234,7 @@ spawnExpr = do
 -- | Expression ::= ConstExpr
 --              ::= BinOpExpr
 --              ::= UnaryOpExpr
+--              ::= NullOpExpr
 --              ::= IfExpr
 --              ::= VarExpr
 --              ::= LetExpr
@@ -237,6 +251,7 @@ expression = foldl1 (<|>) (fmap try expressionList)
       [ constExpr
       , binOpExpr
       , unaryOpExpr
+      , nullOpExpr
       , ifExpr
       , varExpr
       , letExpr

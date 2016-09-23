@@ -104,6 +104,7 @@ data Expression =
   | LetExpr [(String, Expression)] Expression
   | BinOpExpr BinOp Expression Expression
   | UnaryOpExpr UnaryOp Expression
+  | NullOpExpr NullOp
   | IfExpr Expression Expression Expression
   | ProcExpr [String] Expression
   | CallExpr Expression [Expression]
@@ -117,7 +118,10 @@ data BinOp =
   Add | Sub | Mul | Div | Gt | Le | Eq
   deriving (Show, Eq)
 
-data UnaryOp = Minus | IsZero
+data UnaryOp = Minus | IsZero | Wait | Signal
+  deriving (Show, Eq)
+
+data NullOp = Mut
   deriving (Show, Eq)
 
 data Procedure = Procedure [String] Expression Environment
@@ -125,16 +129,29 @@ data Procedure = Procedure [String] Expression Environment
 instance Show Procedure where
   show _ = "<procedure>"
 
+data Mutex = Mutex Bool [Thread]
+
+instance Show Mutex where
+  show (Mutex isLock threads) = concat
+    [ "<mutex islock = "
+    , show isLock
+    , " waiting threads: "
+    , show (length threads)
+    , ">"
+    ]
+
 data ExpressedValue = ExprNum Integer
                     | ExprBool Bool
                     | ExprProc Procedure
                     | ExprRef Ref
+                    | ExprMutex Mutex
 
 instance Show ExpressedValue where
   show (ExprNum i)   = show i
   show (ExprBool b)  = show b
   show (ExprProc p)  = show p
   show (ExprRef ref) = show ref
+  show (ExprMutex m) = show m
 
 instance Eq ExpressedValue where
   (ExprNum i1) == (ExprNum i2) = i1 == i2
