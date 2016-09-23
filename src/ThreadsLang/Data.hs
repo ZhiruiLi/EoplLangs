@@ -162,6 +162,7 @@ data LangError =
   deriving (Show, Eq)
 
 type UnaryFunc = ExpressedValue -> IOTry ExpressedValue
+
 type BinFunc = ExpressedValue -> ExpressedValue -> IOTry ExpressedValue
 
 data Continuation =

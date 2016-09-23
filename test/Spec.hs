@@ -12,6 +12,7 @@ import qualified MutablePairs.Suites        as MutablePairs
 import qualified NamelessIntp.Suites        as Nameless
 import qualified ProcLang.Suites            as Proc
 import           Test.HUnit
+import qualified ThreadsLang.Suites         as Threads
 
 main :: IO ()
 main = do
@@ -29,5 +30,6 @@ main = do
     , CPassing.tests
     , Exception.tests
     , ImplicitCont.tests
+    , Threads.tests
     ]
   return ()

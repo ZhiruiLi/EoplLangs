@@ -8,6 +8,7 @@ module ThreadsLang.Evaluator
 import           Control.Applicative  ((<|>))
 import           Control.Arrow        (second)
 import           Control.Monad.Except
+import           Debug.Trace          (trace)
 import           ThreadsLang.Data
 import           ThreadsLang.Parser
 
@@ -17,7 +18,7 @@ run :: String -> IO (Try ExpressedValue)
 run input = runExceptT $ do
   prog <- liftTry (parseProgram input)
   store <- liftIO initStore
-  evalProgram store 10 prog
+  evalProgram store 3 prog
 
 evalProgram :: Store -> Integer -> Program -> EvaluateResult
 evalProgram store timeSlice (Prog expr) = do
