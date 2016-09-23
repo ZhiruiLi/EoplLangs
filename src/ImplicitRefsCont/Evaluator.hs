@@ -90,7 +90,7 @@ unpackExprRef notRef        = throwError $ TypeMismatch "reference" notRef
 
 unpackProc :: ExpressedValue -> IOTry Procedure
 unpackProc (ExprProc proc) = return proc
-unpackProc noProc          = throwError $ TypeMismatch "procedure" noProc
+unpackProc notProc         = throwError $ TypeMismatch "procedure" notProc
 
 evalConstExpr :: ExpressedValue -> Store -> Continuation -> EvaluateResult
 evalConstExpr val store cont = applyCont store cont val

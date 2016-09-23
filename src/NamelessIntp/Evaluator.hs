@@ -171,9 +171,9 @@ evalCallExpr rator rand env = do
   applyProcedure proc randVal
   where
     unpackProc (ExprProc proc) = Right proc
-    unpackProc noProc = Left $
+    unpackProc notProc = Left $
       "Operator of call expression should be procedure, "
-      `mappend` "but got: " `mappend` show noProc
+      `mappend` "but got: " `mappend` show notProc
     applyProcedure (NamelessProcedure body savedEnv) rand =
       valueOf body (extend rand savedEnv)
 

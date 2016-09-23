@@ -192,9 +192,9 @@ evalCallExpr rator rand env = do
   where
     unpackProc :: ExpressedValue -> Try Procedure
     unpackProc (ExprProc proc) = Right proc
-    unpackProc noProc = Left $
+    unpackProc notProc = Left $
       "Operator of call expression should be procedure, but got: "
-      `mappend` show noProc
+      `mappend` show notProc
     func :: Try [ExpressedValue] -> Try ExpressedValue -> Try [ExpressedValue]
     func maybeArgs maybeArg = do
       args <- maybeArgs

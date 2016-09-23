@@ -226,9 +226,9 @@ evalCallExpr ratorExpr randExprs env = do
   where
     unpackProc :: ExpressedValue -> StatedTry Procedure
     unpackProc (ExprProc proc) = return proc
-    unpackProc noProc = throwError $
+    unpackProc notProc = throwError $
       "Operator of call expression should be procedure, but got: "
-      `mappend` show noProc
+      `mappend` show notProc
     safeZip :: [a] -> [b] -> StatedTry [(a, b)]
     safeZip [] []         = return []
     safeZip (_:_) []      = throwError "Not enough arguments!"

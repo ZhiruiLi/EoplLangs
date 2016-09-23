@@ -57,7 +57,7 @@ unpackExprRef notRef        = throwError $ TypeMismatch "reference" notRef
 
 unpackProc :: ExpressedValue -> IOTry Procedure
 unpackProc (ExprProc proc) = return proc
-unpackProc noProc          = throwError $ TypeMismatch "procedure" noProc
+unpackProc notProc         = throwError $ TypeMismatch "procedure" notProc
 
 getExprRef :: String -> Environment -> Store -> IOTry Ref
 getExprRef name env store = do
