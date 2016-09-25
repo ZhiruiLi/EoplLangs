@@ -89,6 +89,38 @@ applyCont store sch continuation val = do
       let thread = Thread (applyProcedure store sch proc [] EndSubThreadCont)
       liftIO $ enqueueThread sch thread
       applyCont store sch cont (ExprBool False)
+    applyCont' (WaitCont cont) = do
+      mutex <- unpackMutex val
+      let t = newThread $ applyCont store sch cont (ExprBool False)
+      waitForMutex sch mutex t
+    applyCont' (SignalCont cont) = do
+      mutex <- unpackMutex val
+      let t = newThread $ applyCont store sch cont (ExprBool False)
+      signalMutex sch mutex t
+
+waitForMutex :: Scheduler -> Mutex -> Thread -> EvaluateResult
+waitForMutex scheduler mutex thread = do
+  isOpen <- liftIO $ mutexIsOpen mutex
+  if isOpen
+    then do { liftIO $ closeMutex mutex
+            ; runThread thread
+            }
+    else do { liftIO $ enqueueMutexThread mutex thread
+            ; runNextThread scheduler
+            }
+
+signalMutex :: Scheduler -> Mutex -> Thread -> EvaluateResult
+signalMutex scheduler mutex thread = do
+  isOpen <- liftIO $ mutexIsOpen mutex
+  liftIO . unless isOpen $
+    do { isEmpty <- mutexQueueIsEmpty mutex
+       ; if isEmpty
+           then openMutex mutex
+           else do { t <- dequeueMutexThread mutex
+                   ; enqueueThread scheduler t
+                   }
+       }
+  runThread thread
 
 liftMaybe :: LangError -> Maybe a -> IOTry a
 liftMaybe _ (Just x) = return x
@@ -203,21 +235,23 @@ unaryOpConverter unpack trans func val = do
 nullOps :: [(NullOp, EvaluateResult)]
 nullOps = []
 
-operateWait :: ExpressedValue -> EvaluateResult
-operateWait val = undefined
+operateOnWait :: Expression
+              -> Environment -> Store -> Scheduler -> Continuation
+              -> EvaluateResult
+operateOnWait expr env store scheduler cont =
+  valueOf expr env store scheduler (WaitCont cont)
 
-operateSignal :: ExpressedValue -> EvaluateResult
-operateSignal val = undefined
-
-specialUnaryOps :: [(UnaryOp, ExpressedValue -> EvaluateResult)]
-specialUnaryOps = [ (Wait, operateWait), (Signal, operateSignal) ]
+operateOnSignal :: Expression
+                -> Environment -> Store -> Scheduler -> Continuation
+                -> EvaluateResult
+operateOnSignal expr env store scheduler cont =
+  valueOf expr env store scheduler (SignalCont cont)
 
 unaryOps :: [(UnaryOp, ExpressedValue -> EvaluateResult)]
 unaryOps = concat
   [ unaryNum2Num
   , unaryNum2Bool
   , unaryBool2Bool
-  , specialUnaryOps
   ]
   where
     n2nTrans = unaryOpConverter unpackNum ExprNum
@@ -237,17 +271,23 @@ evalBinOpExpr op expr1 expr2 env store scheduler cont = do
 evalUnaryOpExpr :: UnaryOp -> Expression
                 -> Environment -> Store -> Scheduler -> Continuation
                 -> EvaluateResult
+evalUnaryOpExpr Wait expr env store scheduler cont =
+  operateOnWait expr env store scheduler cont
+evalUnaryOpExpr Signal expr env store scheduler cont =
+  operateOnSignal expr env store scheduler cont
 evalUnaryOpExpr op expr env store scheduler cont = do
   func <- tryFindOp op unaryOps
   valueOf expr env store scheduler (UnaryOpCont func cont)
 
-newMutex :: Store -> IOTry Ref
-newMutex store = newRef store (ExprMutex (Mutex Open []))
+newMutexRef :: Store -> IOTry Ref
+newMutexRef store = do
+  m <- liftIO newMutex
+  newRef store (ExprMutex m)
 
 evalNullOpExpr :: NullOp -> Environment -> Store -> Scheduler -> Continuation
                -> EvaluateResult
 evalNullOpExpr op env store scheduler cont = case op of
-  Mut -> newMutex store >>= (applyCont store scheduler cont . ExprRef)
+  Mut -> newMutexRef store >>= (applyCont store scheduler cont . ExprRef)
 
 evalIfExpr :: Expression -> Expression -> Expression
            -> Environment -> Store -> Scheduler -> Continuation

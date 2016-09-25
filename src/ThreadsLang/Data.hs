@@ -129,18 +129,50 @@ data Procedure = Procedure [String] Expression Environment
 instance Show Procedure where
   show _ = "<procedure>"
 
-data Mutex = Mutex MutexState [Thread]
+data Mutex = Mutex (IORef MutexState) (IORef [Thread])
+
+newMutex :: IO Mutex
+newMutex = do
+  sRef <- newIORef Open
+  tRef <- newIORef []
+  return $ Mutex sRef tRef
+
+mutexIsOpen :: Mutex -> IO Bool
+mutexIsOpen (Mutex s _) = do
+  state <- readIORef s
+  case state of
+    Open   -> return True
+    Closed -> return False
+
+closeMutex :: Mutex -> IO ()
+closeMutex (Mutex s _) = atomicWriteIORef s Closed
+
+openMutex :: Mutex -> IO ()
+openMutex (Mutex s _) = atomicWriteIORef s Open
+
+enqueueMutexThread :: Mutex -> Thread -> IO ()
+enqueueMutexThread (Mutex _ refQ) thread = do
+  que <- readIORef refQ
+  atomicWriteIORef refQ (que `mappend` [thread])
+  
+dequeueMutexThread :: Mutex -> IO Thread 
+dequeueMutexThread (Mutex _ refQ) = do 
+  que <- readIORef refQ
+  case que of 
+    [] -> error "Dequing an empty mutex queue."
+    (t : ts) -> do { atomicWriteIORef refQ ts
+                   ; return t
+                   }
+
+mutexQueueIsEmpty :: Mutex -> IO Bool
+mutexQueueIsEmpty (Mutex _ q) = check <$> readIORef q
+  where check [] = True
+        check _  = False
 
 data MutexState = Open | Closed deriving (Show, Eq)
 
 instance Show Mutex where
-  show (Mutex isLock threads) = concat
-    [ "<mutex islock = "
-    , show isLock
-    , " waiting threads: "
-    , show (length threads)
-    , ">"
-    ]
+  show (Mutex _ _) = "<mutex>"
 
 data ExpressedValue = ExprNum Integer
                     | ExprBool Bool
@@ -197,8 +229,16 @@ data Continuation =
   | AssignCont String Environment Continuation
   | BeginCont [Expression] Environment Continuation
   | SpawnCont Continuation
+  | WaitCont Continuation
+  | SignalCont Continuation
 
 newtype Thread = Thread (IOTry ExpressedValue)
+
+newThread :: IOTry ExpressedValue -> Thread
+newThread = Thread
+
+runThread :: Thread -> IOTry ExpressedValue
+runThread (Thread val) = val
 
 data GlobalState = GlobalState
   { globalThreadQueue  :: [Thread]
@@ -222,9 +262,6 @@ enqueueThread scheduler thread = do
   state <- readIORef scheduler
   let newQueue = globalThreadQueue state `mappend` [thread]
   atomicWriteIORef scheduler (state { globalThreadQueue = newQueue})
-
-runThread :: Thread -> IOTry ExpressedValue
-runThread (Thread val) = val
 
 runNextThread :: Scheduler -> IOTry ExpressedValue
 runNextThread scheduler = do
