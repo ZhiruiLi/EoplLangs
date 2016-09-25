@@ -4,6 +4,7 @@ import           Control.Monad.Except
 import           Data.IORef
 import qualified Data.Map             as M
 import           Data.Maybe           (fromMaybe)
+import           Debug.Trace          (trace)
 import qualified Text.Megaparsec      as Mega
 
 type Environment = M.Map String DenotedValue
@@ -261,7 +262,7 @@ enqueueThread :: Scheduler -> Thread -> Integer -> IO ()
 enqueueThread scheduler thread remainTime = do
   state <- readIORef scheduler
   let newQueue = globalThreadQueue state `mappend` [(thread, remainTime)]
-  atomicWriteIORef scheduler (state { globalThreadQueue = newQueue})
+  atomicWriteIORef scheduler (state { globalThreadQueue = newQueue })
 
 runNextThread :: Scheduler -> IOTry ExpressedValue
 runNextThread scheduler = do
@@ -271,7 +272,7 @@ runNextThread scheduler = do
     ((thread, remainTime) : pairs) -> do
       liftIO $ atomicWriteIORef scheduler
                                 (state { globalThreadQueue = pairs
-                                       , globalTimeRemain = remainTime})
+                                       , globalTimeRemain = remainTime })
       runThread thread
 
 maxTimeSlice :: Scheduler -> IO Integer
