@@ -154,11 +154,11 @@ enqueueMutexThread :: Mutex -> Thread -> IO ()
 enqueueMutexThread (Mutex _ refQ) thread = do
   que <- readIORef refQ
   atomicWriteIORef refQ (que `mappend` [thread])
-  
-dequeueMutexThread :: Mutex -> IO Thread 
-dequeueMutexThread (Mutex _ refQ) = do 
+
+dequeueMutexThread :: Mutex -> IO Thread
+dequeueMutexThread (Mutex _ refQ) = do
   que <- readIORef refQ
-  case que of 
+  case que of
     [] -> error "Dequing an empty mutex queue."
     (t : ts) -> do { atomicWriteIORef refQ ts
                    ; return t
