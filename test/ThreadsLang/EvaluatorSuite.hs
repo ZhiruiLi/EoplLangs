@@ -20,6 +20,7 @@ tests = TestList
   , testProc
   , testRef
   , testSpawn
+  , testMutex
   ]
 
 testBasic :: Test
@@ -172,8 +173,8 @@ testSpawn = TestList
              , "         proc() "
              , "           if zero?(n) then 1 else (buzyWait -(n, 1)) "
              , "in begin spawn(incX);"
-             , "      (buzyWait 100);"
-             , "      x"
+             , "         (buzyWait 100);"
+             , "         x"
              , "   end"
              ]
   , testEq "Test spawn 2"
@@ -185,14 +186,61 @@ testSpawn = TestList
              , "         proc() "
              , "           if zero?(n) then 1 else (buzyWait -(n, 1)) "
              , "in begin spawn(incX);"
-             , "      spawn(incX);"
-             , "      spawn(incX);"
-             , "      (buzyWait 100);"
-             , "      x"
+             , "         spawn(incX);"
+             , "         spawn(incX);"
+             , "         (buzyWait 100);"
+             , "         x"
              , "   end"
              ]
   ]
 
+testMutex :: Test
+testMutex = TestList
+  [ testEq "Test mutex 1"
+           (ExprNum 1)
+           $ unlines
+             [ "let x = 0 in"
+             , "let m = mutex() in"
+             , "let incX = proc()"
+             , "  begin"
+             , "    wait(m);"
+             , "    set x = + (x, 1);"
+             , "    signal(m)"
+             , "  end in"
+             , "letrec buzyWait(n) = "
+             , "         proc() "
+             , "           if zero?(n) then 1 else (buzyWait -(n, 1)) "
+             , "in begin spawn(incX);"
+             , "         (buzyWait 100);"
+             , "         wait(m);"
+             , "         signal(m);"
+             , "         x"
+             , "   end"
+             ]
+  , testEq "Test spawn 2"
+           (ExprNum 3)
+           $ unlines
+             [ "let x = 0 in"
+             , "let m = mutex() in"
+             , "let incX = proc()"
+             , "  begin"
+             , "    wait(m);"
+             , "    set x = + (x, 1);"
+             , "    signal(m)"
+             , "  end in"
+             , "letrec buzyWait(n) = "
+             , "         proc() "
+             , "           if zero?(n) then 1 else (buzyWait -(n, 1)) "
+             , "in begin spawn(incX);"
+             , "         spawn(incX);"
+             , "         spawn(incX);"
+             , "         (buzyWait 100);"
+             , "         wait(m);"
+             , "         signal(m);"
+             , "         x"
+             , "   end"
+             ]
+  ]
 
 testEq :: String -> ExpressedValue -> String -> Test
 testEq msg expect input = TestCase $ do

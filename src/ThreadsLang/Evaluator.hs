@@ -279,15 +279,10 @@ evalUnaryOpExpr op expr env store scheduler cont = do
   func <- tryFindOp op unaryOps
   valueOf expr env store scheduler (UnaryOpCont func cont)
 
-newMutexRef :: Store -> IOTry Ref
-newMutexRef store = do
-  m <- liftIO newMutex
-  newRef store (ExprMutex m)
-
 evalNullOpExpr :: NullOp -> Environment -> Store -> Scheduler -> Continuation
                -> EvaluateResult
 evalNullOpExpr op env store scheduler cont = case op of
-  Mut -> newMutexRef store >>= (applyCont store scheduler cont . ExprRef)
+  Mut -> (ExprMutex <$> liftIO newMutex) >>= applyCont store scheduler cont
 
 evalIfExpr :: Expression -> Expression -> Expression
            -> Environment -> Store -> Scheduler -> Continuation
