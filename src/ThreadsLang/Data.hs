@@ -241,7 +241,7 @@ runThread :: Thread -> IOTry ExpressedValue
 runThread (Thread val) = val
 
 data GlobalState = GlobalState
-  { globalThreadQueue  :: [Thread]
+  { globalThreadQueue  :: [(Thread, Integer)]
   , globalFinalResult  :: ExpressedValue
   , globalMaxTimeSlice :: Integer
   , globalTimeRemain   :: Integer
@@ -257,10 +257,10 @@ initScheduler ticks = newIORef GlobalState
   , globalTimeRemain = ticks
   }
 
-enqueueThread :: Scheduler -> Thread -> IO ()
-enqueueThread scheduler thread = do
+enqueueThread :: Scheduler -> Thread -> Integer -> IO ()
+enqueueThread scheduler thread remainTime = do
   state <- readIORef scheduler
-  let newQueue = globalThreadQueue state `mappend` [thread]
+  let newQueue = globalThreadQueue state `mappend` [(thread, remainTime)]
   atomicWriteIORef scheduler (state { globalThreadQueue = newQueue})
 
 runNextThread :: Scheduler -> IOTry ExpressedValue
@@ -268,12 +268,14 @@ runNextThread scheduler = do
   state <- liftIO $ readIORef scheduler
   case globalThreadQueue state of
     [] -> return $ globalFinalResult state
-    (t : ts) -> do
-      let maxTime = globalMaxTimeSlice state
+    ((thread, remainTime) : pairs) -> do
       liftIO $ atomicWriteIORef scheduler
-                                (state { globalThreadQueue = ts
-                                       , globalTimeRemain = maxTime})
-      runThread t
+                                (state { globalThreadQueue = pairs
+                                       , globalTimeRemain = remainTime})
+      runThread thread
+
+maxTimeSlice :: Scheduler -> IO Integer
+maxTimeSlice scheduler = globalMaxTimeSlice <$> readIORef scheduler
 
 setFinalResult :: Scheduler -> ExpressedValue -> IO ()
 setFinalResult scheduler val =
@@ -284,6 +286,9 @@ timeExpired :: Scheduler -> IO Bool
 timeExpired scheduler =
   atomicModifyIORef scheduler
                     (\s -> (s, globalTimeRemain s <= 0))
+
+timeRemain :: Scheduler -> IO Integer
+timeRemain scheduler = globalTimeRemain <$> readIORef scheduler
 
 decrementTime :: Scheduler -> IO ()
 decrementTime scheduler = do

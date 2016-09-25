@@ -32,8 +32,9 @@ applyCont :: Store -> Scheduler -> Continuation -> ExpressedValue
 applyCont store sch continuation val = do
   isExpired <- liftIO $ timeExpired sch
   if isExpired
-    then do { liftIO . enqueueThread sch $
-                Thread (applyCont store sch continuation val)
+    then do { let thread = newThread $ applyCont store sch continuation val
+            ; timeSlice <- liftIO $ maxTimeSlice sch
+            ; liftIO $ enqueueThread sch thread timeSlice
             ; runNextThread sch
             }
     else do { liftIO $ decrementTime sch
@@ -86,8 +87,10 @@ applyCont store sch continuation val = do
       valueOf expr env store sch (BeginCont exprs env cont)
     applyCont' (SpawnCont cont) = do
       proc <- unpackProc val
-      let thread = Thread (applyProcedure store sch proc [] EndSubThreadCont)
-      liftIO $ enqueueThread sch thread
+      timeSlice <- liftIO $ maxTimeSlice sch
+      let run = applyProcedure store sch proc [] EndSubThreadCont
+      let thread = newThread run
+      liftIO $ enqueueThread sch thread timeSlice
       applyCont store sch cont (ExprBool False)
     applyCont' (WaitCont cont) = do
       mutex <- unpackMutex val
@@ -116,8 +119,9 @@ signalMutex scheduler mutex thread = do
     do { isEmpty <- mutexQueueIsEmpty mutex
        ; if isEmpty
            then openMutex mutex
-           else do { t <- dequeueMutexThread mutex
-                   ; enqueueThread scheduler t
+           else do { thread <- dequeueMutexThread mutex
+                   ; timeSlice <- maxTimeSlice scheduler
+                   ; enqueueThread scheduler thread timeSlice
                    }
        }
   runThread thread
@@ -285,7 +289,8 @@ evalNullOpExpr op env store scheduler cont = case op of
   Mut -> (ExprMutex <$> liftIO newMutex) >>= applyCont store scheduler cont
   Yield -> do { let run = applyCont store scheduler cont (ExprBool False)
               ; let thread = newThread run
-              ; liftIO $ enqueueThread scheduler thread
+              ; timeSlice <- liftIO $ timeRemain scheduler
+              ; liftIO $ enqueueThread scheduler thread timeSlice
               ; runNextThread scheduler
               }
 
