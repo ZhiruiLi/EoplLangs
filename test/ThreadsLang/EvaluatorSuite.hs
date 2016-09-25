@@ -217,7 +217,7 @@ testMutex = TestList
              , "         x"
              , "   end"
              ]
-  , testEq "Test spawn 2"
+  , testEq "Test mutex 2"
            (ExprNum 3)
            $ unlines
              [ "let x = 0 in"
@@ -235,6 +235,29 @@ testMutex = TestList
              , "         spawn(incX);"
              , "         spawn(incX);"
              , "         (buzyWait 100);"
+             , "         wait(m);"
+             , "         signal(m);"
+             , "         x"
+             , "   end"
+             ]
+  , testEq "Test yield"
+           (ExprNum 3)
+           $ unlines
+             [ "let x = 0 in"
+             , "let m = mutex() in"
+             , "let incX = proc()"
+             , "  begin"
+             , "    wait(m);"
+             , "    set x = + (x, 1);"
+             , "    signal(m)"
+             , "  end in"
+             , "letrec buzyWait(n) = "
+             , "         proc() "
+             , "           if zero?(n) then 1 else (buzyWait -(n, 1)) "
+             , "in begin spawn(incX);"
+             , "         spawn(incX);"
+             , "         spawn(incX);"
+             , "         yield();"
              , "         wait(m);"
              , "         signal(m);"
              , "         x"

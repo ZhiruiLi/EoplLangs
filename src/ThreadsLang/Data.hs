@@ -121,7 +121,7 @@ data BinOp =
 data UnaryOp = Minus | IsZero | Wait | Signal
   deriving (Show, Eq)
 
-data NullOp = Mut
+data NullOp = Mut | Yield
   deriving (Show, Eq)
 
 data Procedure = Procedure [String] Expression Environment

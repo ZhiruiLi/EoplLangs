@@ -41,7 +41,7 @@ reservedWords :: [String]
 reservedWords  =
   [ "let", "in", "if", "then", "else", "zero?", "minus"
   , "equal?", "greater?", "less?", "proc", "letrec", "begin", "set"
-  , "spawn", "mutex", "wait", "signal"
+  , "spawn", "mutex", "wait", "signal", "yield"
   ]
 
 genOpParser :: Show a => [(String, a)] -> Parser a
@@ -68,7 +68,7 @@ unaryOp :: Parser UnaryOp
 unaryOp = genOpParser unaryOpsMap
 
 nullOpsMap :: [(String, NullOp)]
-nullOpsMap = [ ("mutex", Mut) ]
+nullOpsMap = [ ("mutex", Mut), ("yield", Yield) ]
 
 nullOp :: Parser NullOp
 nullOp = genOpParser nullOpsMap

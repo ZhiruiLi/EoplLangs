@@ -77,6 +77,7 @@ testUnaryOpExpr = TestList
 testNullOpExpr :: Test
 testNullOpExpr = TestList
   [ testEq "Parse mutex expression" (NullOpExpr Mut) "mutex()"
+  , testEq "Parse yield expression" (NullOpExpr Yield) "yield()"
   ]
 
 testCondExpr :: Test

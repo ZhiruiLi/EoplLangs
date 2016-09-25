@@ -283,6 +283,11 @@ evalNullOpExpr :: NullOp -> Environment -> Store -> Scheduler -> Continuation
                -> EvaluateResult
 evalNullOpExpr op env store scheduler cont = case op of
   Mut -> (ExprMutex <$> liftIO newMutex) >>= applyCont store scheduler cont
+  Yield -> do { let run = applyCont store scheduler cont (ExprBool False)
+              ; let thread = newThread run
+              ; liftIO $ enqueueThread scheduler thread
+              ; runNextThread scheduler
+              }
 
 evalIfExpr :: Expression -> Expression -> Expression
            -> Environment -> Store -> Scheduler -> Continuation
