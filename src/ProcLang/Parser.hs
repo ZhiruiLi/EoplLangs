@@ -179,6 +179,7 @@ procExpr = do
   body <- expression
   return $ ProcExpr params body
 
+-- | CallExpr ::= (Expression {Expression}*)
 callExpr :: Parser Expression
 callExpr = parens $ do
   rator <- expression
