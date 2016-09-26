@@ -12,9 +12,9 @@ import           LetRecLang.Parser
 
 type EvaluateResult = Try ExpressedValue
 
-liftMaybe :: String -> Maybe b -> Try b
-liftMaybe _ (Just x) = Right x
-liftMaybe y Nothing  = Left y
+liftMaybe :: LangError -> Maybe a -> Try a
+liftMaybe _ (Just x) = return x
+liftMaybe y Nothing  = throwError y
 
 run :: String -> EvaluateResult
 run input = parseProgram input >>= evalProgram
@@ -52,7 +52,7 @@ denoToExpr (DenoProc p) = ExprProc p
 
 evalVarExpr :: String -> Environment -> EvaluateResult
 evalVarExpr var env =
-  denoToExpr <$> liftMaybe ("Not in scope: " `mappend` var) (apply env var)
+  denoToExpr <$> liftMaybe (UnboundVar var) (apply env var)
 
 evalLetRecExpr :: [(String, [String], Expression)] -> Expression -> Environment
                -> EvaluateResult
@@ -77,86 +77,71 @@ unaryNumToNumOpMap = [(Minus, negate)]
 unaryNumToBoolOpMap :: [(UnaryOp, Integer -> Bool)]
 unaryNumToBoolOpMap = [(IsZero, (0 ==))]
 
-unpackNum :: String -> ExpressedValue -> Try Integer
-unpackNum _ (ExprNum n) = return n
-unpackNum caller notNum = Left $ concat [
-  caller, ": Unpacking a not number value: ", show notNum ]
-
-unpackBool :: String -> ExpressedValue -> Try Bool
-unpackBool _ (ExprBool b) = return b
-unpackBool caller notBool = Left $ concat [
-  caller, ": Unpacking a not boolean value: ", show notBool ]
-
-tryFind :: Eq a => String -> a -> [(a, b)] -> Try b
+tryFind :: Eq a => LangError -> a -> [(a, b)] -> Try b
 tryFind err x pairs = liftMaybe err (lookup x pairs)
 
 tryFindOp :: (Eq a, Show a) => a -> [(a, b)] -> Try b
-tryFindOp op = tryFind ("Unknown operator: " `mappend` show op) op
+tryFindOp op = tryFind (UnknownOperator $ show op) op
+
+binOpConverter :: (ExpressedValue -> Try a)
+               -> (ExpressedValue -> Try b)
+               -> (c -> ExpressedValue)
+               -> (a -> b -> c)
+               -> (ExpressedValue -> ExpressedValue -> EvaluateResult)
+binOpConverter unpack1 unpack2 trans func val1 val2 = do
+  va <- unpack1 val1
+  vb <- unpack2 val2
+  return . trans $ func va vb
+
+binOps :: [(BinOp, ExpressedValue -> ExpressedValue -> EvaluateResult)]
+binOps = concat [binNum2Num, binNum2Bool, binBool2Bool]
+  where
+    n2nTrans = binOpConverter unpackNum unpackNum ExprNum
+    binNum2Num = fmap (second n2nTrans) binNumToNumOpMap
+    n2bTrans = binOpConverter unpackNum unpackNum ExprBool
+    binNum2Bool = fmap (second n2bTrans) binNumToBoolOpMap
+    b2bTrans = binOpConverter unpackBool unpackBool ExprBool
+    binBool2Bool = fmap (second b2bTrans) binBoolOpMap
+
+unaryOpConverter :: (ExpressedValue -> Try a)
+                 -> (b -> ExpressedValue)
+                 -> (a -> b)
+                 -> (ExpressedValue -> EvaluateResult)
+unaryOpConverter unpack trans func val = do
+  va <- unpack val
+  return . trans $ func va
+
+unaryOps :: [(UnaryOp, ExpressedValue -> EvaluateResult)]
+unaryOps = concat [unaryNum2Num, unaryNum2Bool, unaryBool2Bool]
+  where
+    n2nTrans = unaryOpConverter unpackNum ExprNum
+    unaryNum2Num = fmap (second n2nTrans) unaryNumToNumOpMap
+    n2bTrans = unaryOpConverter unpackNum ExprBool
+    unaryNum2Bool = fmap (second n2bTrans) unaryNumToBoolOpMap
+    b2bTrans = unaryOpConverter unpackBool ExprBool
+    unaryBool2Bool = fmap (second b2bTrans) unaryBoolOpMap
 
 evalBinOpExpr :: BinOp -> Expression -> Expression -> Environment
               -> EvaluateResult
 evalBinOpExpr op expr1 expr2 env = do
+  func <- tryFindOp op binOps
   v1 <- valueOf expr1 env
   v2 <- valueOf expr2 env
-  numToNum v1 v2 <|> numToBool v1 v2  <|> boolToBool v1 v2
-  where
-    findOpFrom = tryFindOp op
-    unpackN = unpackNum $ "binary operation " `mappend` show op
-    unpackB = unpackBool $ "binary operation " `mappend` show op
-    numToNum :: ExpressedValue -> ExpressedValue -> EvaluateResult
-    numToNum val1 val2 = do
-      func <- findOpFrom binNumToNumOpMap
-      n1 <- unpackN val1
-      n2 <- unpackN val2
-      return . ExprNum $ func n1 n2
-    numToBool :: ExpressedValue -> ExpressedValue -> EvaluateResult
-    numToBool val1 val2 = do
-      func <- findOpFrom binNumToBoolOpMap
-      n1 <- unpackN val1
-      n2 <- unpackN val2
-      return . ExprBool $ func n1 n2
-    boolToBool :: ExpressedValue -> ExpressedValue -> EvaluateResult
-    boolToBool val1 val2 = do
-      func <- findOpFrom binBoolOpMap
-      b1 <- unpackB val1
-      b2 <- unpackB val2
-      return . ExprBool $ func b1 b2
+  func v1 v2
 
 evalUnaryOpExpr :: UnaryOp -> Expression -> Environment
                 -> EvaluateResult
 evalUnaryOpExpr op expr env = do
+  func <- tryFindOp op unaryOps
   v <- valueOf expr env
-  numToNum v <|> numToBool v <|> boolToBool v
-  where
-    findOpFrom = tryFindOp op
-    unpackN = unpackNum $ "unary operation " `mappend` show op
-    unpackB = unpackBool $ "unary operation " `mappend` show op
-    numToNum :: ExpressedValue -> EvaluateResult
-    numToNum val = do
-      func <- findOpFrom unaryNumToNumOpMap
-      n <- unpackN val
-      return . ExprNum $ func n
-    numToBool :: ExpressedValue -> EvaluateResult
-    numToBool val = do
-      func <- findOpFrom unaryNumToBoolOpMap
-      n <- unpackN val
-      return . ExprBool $ func n
-    boolToBool :: ExpressedValue -> EvaluateResult
-    boolToBool val = do
-      func <- findOpFrom unaryBoolOpMap
-      b <- unpackB val
-      return . ExprBool $ func b
+  func v
 
 evalCondExpr :: [(Expression, Expression)] -> Environment -> EvaluateResult
-evalCondExpr [] _ = Left "No predicate is true"
+evalCondExpr [] _ = throwError $ DefaultError "No predicate is true."
 evalCondExpr ((e1, e2):pairs) env = do
   val <- valueOf e1 env
-  case val of
-    ExprBool True -> valueOf e2 env
-    ExprBool False -> evalCondExpr pairs env
-    _ -> Left $
-      "Predicate expression should be boolean, but got: "
-      `mappend` show val
+  bool <- unpackBool val
+  if bool then valueOf e2 env else evalCondExpr pairs env
 
 evalLetExpr :: [(String, Expression)] -> Expression -> Environment
             -> EvaluateResult
@@ -190,32 +175,30 @@ evalCallExpr rator rand env = do
   args <- maybeArgs
   applyProcedure proc args
   where
-    unpackProc :: ExpressedValue -> Try Procedure
-    unpackProc (ExprProc proc) = Right proc
-    unpackProc notProc = Left $
-      "Operator of call expression should be procedure, but got: "
-      `mappend` show notProc
     func :: Try [ExpressedValue] -> Try ExpressedValue -> Try [ExpressedValue]
     func maybeArgs maybeArg = do
       args <- maybeArgs
       arg <- maybeArg
-      return $ arg:args
+      return $ arg : args
     maybeArgs :: Try [ExpressedValue]
     maybeArgs = reverse <$>
       foldl func (return []) (fmap (`valueOf` env) rand)
     applyProcedure :: Procedure -> [ExpressedValue] -> EvaluateResult
-    applyProcedure (Procedure params body savedEnv) args =
-      applyProcedure' params body savedEnv args []
-    applyProcedure' :: [String] -> Expression -> Environment
-                    -> [ExpressedValue] -> [String]
+    applyProcedure (Procedure params body savedEnv) args = do
+      pairs <- safeZip params args
+      applyProcedure' pairs body savedEnv []
+    applyProcedure' :: [(String, ExpressedValue)] -> Expression -> Environment
+                    -> [String]
                     -> EvaluateResult
-    applyProcedure' [] body env [] _ = valueOf body env
-    applyProcedure' params _ _ [] _ =
-      Left $ "Too many parameters: " `mappend` show params
-    applyProcedure' [] _ _ args _ =
-      Left $ "Too many arguments: " `mappend` show args
-    applyProcedure' (p:ps) body env (a:as) usedParams =
-      if p `elem` usedParams
-        then Left $ "Parameter name conflict: " `mappend` p
-        else applyProcedure' ps body (extend p (exprToDeno a) env)
-                             as (p:usedParams)
+    applyProcedure' [] body env _ = valueOf body env
+    applyProcedure' ((name, val) : pairs) body env names
+      | name `elem` names =
+          throwError . DefaultError $ "Parameter name conflict" `mappend` name
+      | otherwise = let newEnv = extend name (exprToDeno val) env
+                    in applyProcedure' pairs body newEnv (name : names)
+
+safeZip :: [String] -> [ExpressedValue] -> Try [(String, ExpressedValue)]
+safeZip names args = if nl == pl
+  then return $ zip names args
+  else throwError $ ArgNumMismatch (toInteger nl) args
+  where (nl, pl) = (length names, length args)

@@ -7,13 +7,12 @@ import           LetRecLang.Data
 import           LetRecLang.Evaluator
 import           LetRecLang.Parser    (expression)
 import           Test.HUnit
-import           Text.Megaparsec
 
 tests :: Test
 tests = TestList
   [ testEq "Eval const" (ExprNum 3) "3"
-  , testEq "Eval bounded var" (ExprNum 5) "v"
-  , testNoBound "Eval no-bounded var" "y"
+  , testEq "Eval bounded var" (ExprNum 5) "let v = 5 in v"
+  , testNoBound "Eval no-bounded var" "let v = 5 in y"
   , testEq "Eval binary num-to-num operator" (ExprNum 5) "-(10, 5)"
   , testEq "Eval binary num-to-bool operator (true case)"
            (ExprBool True) "greater?(4, 3)"
@@ -96,38 +95,25 @@ testProc = TestList
   , testError "Too many arguments" "(proc (x y) +(x, y) 1)"
   ]
 
-initEnv :: Environment
-initEnv = initEnvironment [("i", DenoNum 1), ("v", DenoNum 5), ("x", DenoNum 10)]
-
 testEq :: String -> ExpressedValue -> String -> Test
 testEq msg expect input = TestCase $
-  assertEqual msg (Right expect) evalRes
-  where
-    evalRes = case runParser expression "Test equal case" input of
-      Right pRes  -> valueOf pRes initEnv
-      Left pError -> Left $ show pError
+  assertEqual msg (Right expect) (run input)
 
 testError :: String -> String -> Test
 testError msg input = TestCase $
   assertBool msg evalRes
   where
-    evalRes = case runParser expression "Test equal case" input of
-      Right pRes  -> case valueOf pRes initEnv of
-                       Left _  -> True
-                       Right _ -> False
-      Left _ -> False
-
+    evalRes = case run input of
+      Left (ParseError _) -> False
+      Right _             -> False
+      _                   -> True
 
 testNoBound :: String -> String -> Test
 testNoBound msg input = TestCase $
   assertEqual msg noBound True
   where
-    noBound = case runParser expression "Test nobound case" input of
-      Right pRes -> case valueOf pRes initEnv of
-                      Left s -> case stripPrefix "Not in scope: " s of
-                                  Nothing -> False
-                                  _       -> True
-                      _ -> False
-      _ -> False
+    noBound = case run input of
+      Left (UnboundVar _) -> True
+      _                   -> False
 
 

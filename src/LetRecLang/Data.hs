@@ -1,9 +1,13 @@
 module LetRecLang.Data where
 
-import qualified Data.Map   as M
-import           Data.Maybe (fromMaybe)
+import qualified Data.Map        as M
+import           Data.Maybe      (fromMaybe)
+import qualified Text.Megaparsec as Mega
 
-type Try = Either String
+type Try = Either LangError
+
+throwError :: LangError -> Try a
+throwError = Left
 
 -- | This implementation (together with apply') is inefficient,
 -- as it build a new closure every time the procedure is retrived.
@@ -150,3 +154,25 @@ instance Eq DenotedValue where
   (DenoBool b1) == (DenoBool b2) = b1 == b2
   _ == _ = False
 
+data LangError =
+    ParseError (Mega.ParseError (Mega.Token String) Mega.Dec)
+  | TypeMismatch String ExpressedValue
+  | IndexOutOfBound String
+  | ArgNumMismatch Integer [ExpressedValue]
+  | UnknownOperator String
+  | UnboundVar String
+  | RuntimeError String
+  | DefaultError String
+  deriving (Show, Eq)
+
+unpackNum :: ExpressedValue -> Try Integer
+unpackNum (ExprNum n) = return n
+unpackNum notNum      = throwError $ TypeMismatch "number" notNum
+
+unpackBool :: ExpressedValue -> Try Bool
+unpackBool (ExprBool b) = return b
+unpackBool notBool      = throwError $ TypeMismatch "boolean" notBool
+
+unpackProc :: ExpressedValue -> Try Procedure
+unpackProc (ExprProc proc) = Right proc
+unpackProc notProc         = throwError $ TypeMismatch "procedure" notProc

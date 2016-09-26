@@ -7,15 +7,15 @@ module LetRecLang.Parser
 import           Control.Monad          (void)
 import           Data.Maybe             (fromMaybe)
 import           LetRecLang.Data
-import           Text.Megaparsec
+import           Text.Megaparsec        hiding (ParseError)
 import           Text.Megaparsec.Expr
 import qualified Text.Megaparsec.Lexer  as L
 import           Text.Megaparsec.String
 
 parseProgram :: String -> Try Program
 parseProgram input = case runParser program "Program Parser" input of
-  Left err -> Left $ show err
-  Right p  -> Right p
+  Left err -> throwError $ ParseError err
+  Right p  -> return p
 
 spaceConsumer :: Parser ()
 spaceConsumer = L.space (void spaceChar) lineCmnt blockCmnt
