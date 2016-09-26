@@ -147,18 +147,6 @@ valueOf (BeginExpr es) env s sch c = evalBeginExpr es env s sch c
 valueOf (AssignExpr n e) env s sch c = evalAssignExpr n e env s sch c
 valueOf (SpawnExpr expr) env s sch c = evalSpawnExpr expr env s sch c
 
-unpackExprRef :: ExpressedValue -> IOTry Ref
-unpackExprRef (ExprRef ref) = return ref
-unpackExprRef notRef        = throwError $ TypeMismatch "reference" notRef
-
-unpackProc :: ExpressedValue -> IOTry Procedure
-unpackProc (ExprProc proc) = return proc
-unpackProc notProc         = throwError $ TypeMismatch "procedure" notProc
-
-unpackMutex :: ExpressedValue -> IOTry Mutex
-unpackMutex (ExprMutex mut) = return mut
-unpackMutex notMutex        = throwError $ TypeMismatch "mutex" notMutex
-
 evalConstExpr :: ExpressedValue -> Store -> Scheduler -> Continuation
               -> EvaluateResult
 evalConstExpr val store scheduler cont = applyCont store scheduler cont val
@@ -194,14 +182,6 @@ unaryNumToNumOpMap = [(Minus, negate)]
 
 unaryNumToBoolOpMap :: [(UnaryOp, Integer -> Bool)]
 unaryNumToBoolOpMap = [(IsZero, (0 ==))]
-
-unpackNum :: ExpressedValue -> IOTry Integer
-unpackNum (ExprNum n) = return n
-unpackNum notNum      = throwError $ TypeMismatch "number" notNum
-
-unpackBool :: ExpressedValue -> IOTry Bool
-unpackBool (ExprBool b) = return b
-unpackBool notBool      = throwError $ TypeMismatch "boolean" notBool
 
 tryFind :: Eq a => LangError -> a -> [(a, b)] -> IOTry b
 tryFind err x pairs = liftMaybe err (lookup x pairs)

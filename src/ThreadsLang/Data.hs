@@ -297,3 +297,26 @@ decrementTime scheduler = do
   let remainTime = globalTimeRemain state - 1
   atomicWriteIORef scheduler
                    (state { globalTimeRemain = remainTime })
+
+
+type Unpacker a = ExpressedValue -> IOTry a
+
+unpackNum :: Unpacker Integer
+unpackNum (ExprNum n) = return n
+unpackNum notNum      = throwError $ TypeMismatch "number" notNum
+
+unpackBool :: Unpacker Bool
+unpackBool (ExprBool b) = return b
+unpackBool notBool      = throwError $ TypeMismatch "boolean" notBool
+
+unpackExprRef :: Unpacker Ref
+unpackExprRef (ExprRef ref) = return ref
+unpackExprRef notRef        = throwError $ TypeMismatch "reference" notRef
+
+unpackProc :: Unpacker Procedure
+unpackProc (ExprProc proc) = return proc
+unpackProc notProc         = throwError $ TypeMismatch "procedure" notProc
+
+unpackMutex :: Unpacker Mutex
+unpackMutex (ExprMutex mut) = return mut
+unpackMutex notMutex        = throwError $ TypeMismatch "mutex" notMutex
