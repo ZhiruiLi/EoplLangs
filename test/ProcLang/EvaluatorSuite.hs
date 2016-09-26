@@ -73,12 +73,12 @@ testProc = TestList
            "(proc (x) + (x, x) 1)"
   , testEq "Eval proc and call expression (many parameters)"
            (ExprNum 7)
-           "(proc (x y z) + (x, * (y, z)) 1 2 3)"
+           "(proc (x, y, z) + (x, * (y, z)) 1 2 3)"
   , testEq "Eval named proc"
            (ExprNum 7)
-           "let f = proc (x y z) + (x, * (y, z)) in (f 1 2 3)"
+           "let f = proc (x, y, z) + (x, * (y, z)) in (f 1 2 3)"
   , testError "Too many parameters" "(proc () 1 1)"
-  , testError "Too many arguments" "(proc (x y) +(x, y) 1)"
+  , testError "Too many arguments" "(proc (x, y) +(x, y) 1)"
   ]
 
 initEnv :: Environment

@@ -48,6 +48,13 @@ testLet = TestList
              , "        = if zero?(x) then 0 else -((double -(x,1)), -2)"
              , "in (double 6)"
              ]
+  , testEq "Eval letrec with multi parameters"
+           (ExprNum 12)
+           $ unlines
+             [ "letrec double(x, dummy)"
+             , "        = if zero?(x) then 0 else -((double -(x,1) dummy), -2)"
+             , "in (double 6 10000)"
+             ]
   , testEq "Eval co-recursion"
            (ExprNum 1)
            $ unlines
@@ -87,12 +94,12 @@ testProc = TestList
            "(proc (x) + (x, x) 1)"
   , testEq "Eval proc and call expression (many parameters)"
            (ExprNum 7)
-           "(proc (x y z) + (x, * (y, z)) 1 2 3)"
+           "(proc (x, y, z) + (x, * (y, z)) 1 2 3)"
   , testEq "Eval named proc"
            (ExprNum 7)
-           "let f = proc (x y z) + (x, * (y, z)) in (f 1 2 3)"
+           "let f = proc (x, y, z) + (x, * (y, z)) in (f 1 2 3)"
   , testError "Too many parameters" "(proc () 1 1)"
-  , testError "Too many arguments" "(proc (x y) +(x, y) 1)"
+  , testError "Too many arguments" "(proc (x, y) +(x, y) 1)"
   ]
 
 testEq :: String -> ExpressedValue -> String -> Test

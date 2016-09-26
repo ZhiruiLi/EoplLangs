@@ -153,6 +153,9 @@ testParseProc = TestList
   [ testEq "Parse proc expression"
            (ProcExpr ["x"] (VarExpr "x"))
            "proc (x) x"
+  , testEq "Parse proc expression with multi parameters"
+           (ProcExpr ["x", "y", "z"] (VarExpr "x"))
+           "proc (x, y, z) x"
   , testEq "Parse call expression"
            (CallExpr
              (ProcExpr

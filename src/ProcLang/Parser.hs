@@ -171,10 +171,11 @@ condExpr = do
       expr2 <- expression
       return (expr1, expr2)
 
+-- | ProcExpr ::= proc ({Identifier}*(,)) Expression
 procExpr :: Parser Expression
 procExpr = do
   keyWord "proc"
-  params <- parens . many $ identifier
+  params <- parens (sepBy identifier comma)
   body <- expression
   return $ ProcExpr params body
 
