@@ -165,14 +165,16 @@ data LangError =
   | DefaultError String
   deriving (Show, Eq)
 
-unpackNum :: ExpressedValue -> Try Integer
+type Unpacker a = ExpressedValue -> Try a
+
+unpackNum :: Unpacker Integer
 unpackNum (ExprNum n) = return n
 unpackNum notNum      = throwError $ TypeMismatch "number" notNum
 
-unpackBool :: ExpressedValue -> Try Bool
+unpackBool :: Unpacker Bool
 unpackBool (ExprBool b) = return b
 unpackBool notBool      = throwError $ TypeMismatch "boolean" notBool
 
-unpackProc :: ExpressedValue -> Try Procedure
+unpackProc :: Unpacker Procedure
 unpackProc (ExprProc proc) = Right proc
 unpackProc notProc         = throwError $ TypeMismatch "procedure" notProc

@@ -298,7 +298,6 @@ decrementTime scheduler = do
   atomicWriteIORef scheduler
                    (state { globalTimeRemain = remainTime })
 
-
 type Unpacker a = ExpressedValue -> IOTry a
 
 unpackNum :: Unpacker Integer
