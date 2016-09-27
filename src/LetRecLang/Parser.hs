@@ -214,17 +214,21 @@ callExpr = parens $ do
 --              ::= ProcExpr
 --              ::= CallExpr
 expression :: Parser Expression
-expression = try constExpr
-         <|> try binOpExpr
-         <|> try unaryOpExpr
-         <|> try ifExpr
-         <|> try condExpr
-         <|> try varExpr
-         <|> try letStarExpr
-         <|> try letExpr
-         <|> try procExpr
-         <|> try callExpr
-         <|> try letRecExpr
+expression = foldl1 (<|>) (fmap try expressionList)
+  where
+    expressionList =
+      [ constExpr
+      , binOpExpr
+      , unaryOpExpr
+      , ifExpr
+      , condExpr
+      , varExpr
+      , letStarExpr
+      , letExpr
+      , procExpr
+      , callExpr
+      , letRecExpr
+      ]
 
 program :: Parser Program
 program = do
