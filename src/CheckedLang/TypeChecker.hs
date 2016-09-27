@@ -153,15 +153,12 @@ typeOfCallExpr proc args tenv = do
 typeOfLetRecExpr :: [(Type, String, [(String, Type)], Expression)]
                  -> Expression -> TypeEnvironment
                  -> TypeResult
-typeOfLetRecExpr binds body tenv =
-  checkAllBinds >> typeOf body recBodyEnv
+typeOfLetRecExpr binds body tenv = checkAllBinds binds >> typeOf body bodyEnv
   where
     recBinds = [ (name, TypeProc (fmap snd paramTs) resT)
                | (resT, name, paramTs, _) <- binds ]
-    recBodyEnv = extendMany recBinds tenv
-    func acc (resType, name, params, procBody) = do
-      acc
-      checkType procBody resType (extendMany params recBodyEnv)
-      return ()
-    checkAllBinds = foldl func (return ())binds
+    bodyEnv = extendMany recBinds tenv
+    checkAllBinds [] = return ()
+    checkAllBinds ((res, name, params, body) : remain) =
+      checkType body res (extendMany params bodyEnv) >> checkAllBinds remain
 
