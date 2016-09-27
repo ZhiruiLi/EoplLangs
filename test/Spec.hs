@@ -1,6 +1,7 @@
 import qualified CallByName.Suites          as CallByName
 import qualified CallByNeed.Suites          as CallByNeed
 import qualified CallByReference.Suites     as CallByReference
+import qualified CheckedLang.Suites         as Checked
 import qualified ContinuationPassing.Suites as CPassing
 import qualified ExceptionLang.Suites       as Exception
 import qualified ExplicitRefs.Suites        as Explicit
@@ -31,5 +32,6 @@ main = do
     , Exception.tests
     , ImplicitCont.tests
     , Threads.tests
+    , Checked.tests
     ]
   return ()

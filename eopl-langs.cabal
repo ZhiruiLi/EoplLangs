@@ -73,6 +73,11 @@ library
                      , ThreadsLang.Evaluator
                      , ThreadsLang.Parser
                      
+                     , CheckedLang.Data
+                     , CheckedLang.Evaluator
+                     , CheckedLang.Parser
+                     , CheckedLang.TypeChecker
+                     
   build-depends:       base 
                      , megaparsec
                      , containers
