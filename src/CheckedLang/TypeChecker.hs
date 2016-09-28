@@ -61,7 +61,7 @@ typeOfVarExpr name tenv = liftMaybe err $ apply tenv name
 typeOfLetExpr :: [(String, Expression)] -> Expression -> TypeEnvironment
               -> TypeResult
 typeOfLetExpr binds body tenv = do
-  typeBinds <- foldl func (return []) binds
+  typeBinds <- reverse <$> foldl func (return []) binds
   typeOf body (extendMany typeBinds tenv)
   where
     func acc (name, expr) = do
@@ -131,7 +131,7 @@ typeOfProcExpr params body tenv = do
   return $ TypeProc paramTypes resType
 
 typeOfExprs :: [Expression] -> TypeEnvironment -> TypeTry [Type]
-typeOfExprs exprs tenv = foldl func (return []) exprs
+typeOfExprs exprs tenv = reverse <$> foldl func (return []) exprs
   where
     func acc expr = do
       types <- acc
