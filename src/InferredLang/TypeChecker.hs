@@ -8,63 +8,98 @@ module InferredLang.TypeChecker
 
 import           Control.Arrow            (second)
 import           Control.Monad.Except
-import           Control.Monad.State.Lazy (StateT, get, state)
+import           Control.Monad.State.Lazy (StateT, get, put, runStateT, state)
 import           InferredLang.Data        hiding (throwError)
+import           InferredLang.Parser      (parseProgram)
 
-type TypeStateTry = StateT TypeVariable TypeTry
+type TypeStateTry = StateT (TypeVariable, Substitution) TypeTry
 
 type TypeResult = TypeStateTry Type
 
-checkProgramType :: Program -> Type -> TypeResult
+printType :: String -> IO ()
+printType input = case parseProgram input of
+  Right prog -> case typeOfProgram prog of
+                  Right typ -> print typ
+                  Left msg  -> print msg
+  Left msg -> print msg
+
+checkProgramType :: Program -> Type -> TypeTry ()
 checkProgramType (Prog expr) = checkExpressionType expr
 
-checkExpressionType :: Expression -> Type -> TypeResult
-checkExpressionType expr typ = checkType expr typ empty
+checkExpressionType :: Expression -> Type -> TypeTry ()
+checkExpressionType expr typ =
+  fst <$> runStateT (checkType expr typ empty) (0, emptySubst)
 
-typeOfProgram :: Program -> TypeResult
+typeOfProgram :: Program -> TypeTry Type
 typeOfProgram (Prog expr) = typeOfExpression expr
 
-typeOfExpression :: Expression -> TypeResult
-typeOfExpression expr = typeOf expr empty
+typeOfExpression :: Expression -> TypeTry Type
+typeOfExpression expr = fst <$> runStateT (typeOf expr empty) (0, emptySubst)
 
 liftMaybe :: TypeError -> Maybe a -> TypeStateTry a
 liftMaybe _ (Just x) = return x
 liftMaybe y Nothing  = throwError y
 
-checkType :: Expression -> Type -> TypeEnvironment -> TypeResult
+liftTry :: TypeTry a -> TypeStateTry a
+liftTry (Left err)  = throwError err
+liftTry (Right val) = return val
+
+checkType :: Expression -> Type -> TypeEnvironment -> TypeStateTry ()
 checkType expr expect tenv = do
   actual <- typeOf expr tenv
-  if expect == actual
-    then return expect
-    else throwError (TypeMismatch expect actual expr)
+  unifyTypes expect actual expr
 
-unifyTypes :: Type -> Type -> Substitution -> Expression
-           -> TypeTry Substitution
-unifyTypes typ1 typ2 substitution expr =
-  let t1 = applySubst substitution typ1
-      t2 = applySubst substitution typ2
-  in  unifyTypes' t1 t2 substitution
+
+unifyTypes :: Type -> Type -> Expression -> TypeStateTry ()
+unifyTypes typ1 typ2 expr = do
+  subst <- getSubst
+  let t1 = applySubst subst typ1
+  let t2 = applySubst subst typ2
+  unifyTypes' t1 t2
   where
-    unifyAll :: [(Type, Type)] -> Substitution -> TypeTry Substitution
-    unifyAll pairs subst = foldl func (return subst) pairs
-      where func maySub (t1, t2) = maySub >>= unifyTypes' t1 t2
-    unifyTypes' :: Type -> Type -> Substitution -> TypeTry Substitution
-    unifyTypes' t1 t2 subst | t1 == t2 = return subst
-    unifyTypes' t1@(TypeVar var) t2 subst
-      | var `notOccurIn` t2 = return $ extendSubst var t2 subst
+    unifyTypes' :: Type -> Type -> TypeStateTry ()
+    unifyTypes' t1 t2 | t1 == t2 = return ()
+    unifyTypes' t1@(TypeVar var) t2
+      | var `notOccurIn` t2 = updateSubst $ extendSubst var t2
       | otherwise = throwError (TypeOccurError t1 t2 expr)
-    unifyTypes' t1 t2@(TypeVar var) subst
-      | var `notOccurIn` t1 = return $ extendSubst var t1 subst
+    unifyTypes' t1 t2@(TypeVar var)
+      | var `notOccurIn` t1 = updateSubst $ extendSubst var t1
       | otherwise = throwError (TypeOccurError t2 t1 expr)
-    unifyTypes' (TypeProc params1 res1) (TypeProc params2 res2) subst =
-      unifyAll (mappend params1 [res1] `zip` mappend params2 [res2]) subst
-    unifyTypes' t1 t2 _ = throwError $ TypeUnifyError t1 t2 expr
+    unifyTypes' t1@(TypeProc params1 res1)
+                t2@(TypeProc params2 res2) = do
+      paramPairs <- safeZip params1 params2
+      unifyAll $ mappend paramPairs [(res1, res2)]
+      where
+        safeZip :: [a] -> [b] -> TypeStateTry [(a, b)]
+        safeZip p1 p2 = if length p1 == length p2
+          then return $ zip p1 p2
+          else throwError $ TypeUnifyError t1 t2 expr
+    unifyTypes' t1 t2 = throwError $ TypeUnifyError t1 t2 expr
+    unifyAll :: [(Type, Type)] -> TypeStateTry ()
+    unifyAll = foldl (\acc (t1, t2) -> acc >> unifyTypes' t1 t2) (return ())
 
-typeVarGen :: TypeStateTry TypeVariable
-typeVarGen = state (\s -> (s, s + 1))
+nextVar :: TypeStateTry TypeVariable
+nextVar = do
+  (var, subst) <- get
+  put (succTypeVar var, subst)
+  return var
 
-ensureType :: Maybe Type -> TypeResult
-ensureType Nothing    = TypeVar <$> get
+nextVarType :: TypeStateTry Type
+nextVarType = TypeVar <$> nextVar
+
+getSubst :: TypeStateTry Substitution
+getSubst = snd <$> get
+
+setSubst :: Substitution -> TypeStateTry ()
+setSubst subst = do (var, _) <- get
+                    put (var, subst)
+
+updateSubst :: (Substitution -> Substitution) -> TypeStateTry ()
+updateSubst func = do s <- getSubst
+                      setSubst $ func s
+
+ensureType :: Maybe Type -> TypeStateTry Type
+ensureType Nothing    = nextVarType
 ensureType (Just typ) = return typ
 
 typeOf :: Expression -> TypeEnvironment -> TypeResult
@@ -73,7 +108,7 @@ typeOf (VarExpr name) tenv          = typeOfVarExpr name tenv
 typeOf (LetExpr binds body) tenv    = typeOfLetExpr binds body tenv
 typeOf (BinOpExpr op e1 e2) tenv    = typeOfBinOpExpr op e1 e2 tenv
 typeOf (UnaryOpExpr op e) tenv      = typeOfUnaryOpExpr op e tenv
-typeOf (CondExpr branches) tenv     = typeOfCondExpr branches tenv
+typeOf (IfExpr e1 e2 e3) tenv       = typeOfIfExpr e1 e2 e3 tenv
 typeOf (ProcExpr params body) tenv  = typeOfProcExpr params body tenv
 typeOf (CallExpr proc args) tenv    = typeOfCallExpr proc args tenv
 typeOf (LetRecExpr binds body) tenv = typeOfLetRecExpr binds body tenv
@@ -89,12 +124,12 @@ typeOfVarExpr name tenv = liftMaybe err $ apply tenv name
 typeOfLetExpr :: [(String, Expression)] -> Expression -> TypeEnvironment
               -> TypeResult
 typeOfLetExpr binds body tenv = do
-  typeBinds <- reverse <$> foldl func (return []) binds
+  typeBinds <- foldr func (return []) binds
   typeOf body (extendMany typeBinds tenv)
   where
-    func acc (name, expr) = do
-      typeBinds <- acc
+    func (name, expr) acc = do
       typ <- typeOf expr tenv
+      typeBinds <- acc
       return $ (name, typ) : typeBinds
 
 typedBinOps :: [(BinOp, (Type, Type, Type))]
@@ -121,72 +156,90 @@ typedUnaryOps = concat
     unaryNumToNumOps = [ Minus ]
     unaryNumToBoolOps = [ IsZero ]
 
+unifyCheckType :: Expression -> Type -> TypeEnvironment -> TypeStateTry ()
+unifyCheckType expr typ tenv = do
+  t <- typeOf expr tenv
+  unifyTypes t typ expr
+
 typeOfBinOpExpr :: BinOp -> Expression -> Expression -> TypeEnvironment
                 -> TypeResult
 typeOfBinOpExpr op e1 e2 tenv = do
   types <- liftMaybe (UnknownOperator (show op)) (lookup op typedBinOps)
   let (t1, t2, tres) = types
-  checkType e1 t1 tenv
-  checkType e2 t2 tenv
+  unifyCheckType e1 t1 tenv
+  unifyCheckType e2 t2 tenv
   return tres
 
 typeOfUnaryOpExpr :: UnaryOp -> Expression -> TypeEnvironment -> TypeResult
 typeOfUnaryOpExpr op e tenv = do
   types <- liftMaybe (UnknownOperator (show op)) (lookup op typedUnaryOps)
   let (t, tres) = types
-  checkType e t tenv
+  unifyCheckType e t tenv
   return tres
 
-typeOfCondExpr :: [(Expression, Expression)] -> TypeEnvironment -> TypeResult
-typeOfCondExpr [] tenv = throwTypeError . TypeDefaultError $
-  "Condition expression should contain at least one sub-expressions."
-typeOfCondExpr ((cond, expr) : remain) tenv = do
-  checkType cond TypeBool tenv
-  typ <- typeOf expr tenv
-  checkRemainTypes remain typ
-  where
-    checkRemainTypes [] typ = return typ
-    checkRemainTypes ((cond, expr) : remain) typ = do
-      checkType cond TypeBool tenv
-      checkType expr typ tenv
-      checkRemainTypes remain typ
+typeOfIfExpr :: Expression -> Expression -> Expression -> TypeEnvironment
+             -> TypeResult
+typeOfIfExpr ifE thenE elseE tenv = do
+  unifyCheckType ifE TypeBool tenv
+  thenT <- typeOf thenE tenv
+  elseT <- typeOf elseE tenv
+  unifyTypes thenT elseT (IfExpr ifE thenE elseE)
+  return thenT
 
-typeOfProcExpr :: [(String, Type)] -> Expression -> TypeEnvironment
+ensureAllBinds :: [(a, Maybe Type)] -> TypeStateTry [(a, Type)]
+ensureAllBinds = foldr func (return [])
+  where func (name, mayT) acc = do
+          t <- ensureType mayT
+          ((name, t) :) <$> acc
+
+typeOfProcExpr :: [(String, Maybe Type)] -> Expression -> TypeEnvironment
                -> TypeResult
-typeOfProcExpr params body tenv = do
+typeOfProcExpr mayParams body tenv = do
+  params <- ensureAllBinds mayParams
   resType <- typeOf body (extendMany params tenv)
   let paramTypes = fmap snd params
   return $ TypeProc paramTypes resType
 
-typeOfExprs :: [Expression] -> TypeEnvironment -> TypeTry [Type]
-typeOfExprs exprs tenv = reverse <$> foldl func (return []) exprs
+typeOfExprs :: [Expression] -> TypeEnvironment -> TypeStateTry [Type]
+typeOfExprs exprs tenv = foldr func (return []) exprs
   where
-    func acc expr = do
-      types <- acc
+    func expr acc = do
       typ <- typeOf expr tenv
+      types <- acc
       return $ typ : types
 
 typeOfCallExpr :: Expression -> [Expression] -> TypeEnvironment -> TypeResult
-typeOfCallExpr proc args tenv = do
-  procType <- typeOf proc tenv
-  argTypes <- typeOfExprs args tenv
-  checkParamsType procType argTypes
-  where
-    checkParamsType (TypeProc paramTypes resType) argTypes =
-      if paramTypes == argTypes
-        then return resType
-        else throwTypeError $ ParamsTypeMismatch paramTypes argTypes proc
-    checkParamsType wrongType _ = throwTypeError $ CallNotProcVal wrongType
+typeOfCallExpr ratorE argEs tenv = do
+  resT <- nextVarType
+  procT <- typeOf ratorE tenv
+  argTs <- typeOfExprs argEs tenv
+  unifyTypes procT (TypeProc argTs resT) (CallExpr ratorE argEs)
+  let (TypeProc _ resT') = procT
+  (`applySubst` resT') <$> getSubst
 
-typeOfLetRecExpr :: [(Type, String, [(String, Type)], Expression)]
+typeOfLetRecExpr :: [(Maybe Type, String, [(String, Maybe Type)], Expression)]
                  -> Expression -> TypeEnvironment
                  -> TypeResult
-typeOfLetRecExpr binds body tenv = checkAllBinds binds >> typeOf body bodyEnv
-  where
-    recBinds = [ (name, TypeProc (fmap snd paramTs) resT)
-               | (resT, name, paramTs, _) <- binds ]
-    bodyEnv = extendMany recBinds tenv
-    checkAllBinds [] = return ()
-    checkAllBinds ((res, name, params, body) : remain) =
-      checkType body res (extendMany params bodyEnv) >> checkAllBinds remain
+typeOfLetRecExpr binds body tenv = undefined
 
+-- typeOfLetRecExpr binds body tenv = do
+  -- checkAllBinds binds
+  -- typeOf body bodyEnv
+  -- where
+    -- getRecBinds :: [(Maybe Type, String, [(String, Maybe Type)]
+                -- -> TypeStateTry [(Type, String, [(String, Type)]
+    -- getRecBinds [] = return []
+    -- getRecBinds ((mayResT, name, params, expr) : remain) = do
+      -- resT <- ensureType mayResT
+      -- let mayTs = fmap snd params
+      -- paramTs <- ensureAllTypes mayTs
+      -- let params' = zip (fmap fst params) paramTs
+      -- ((resT, name, params') :) <$> getRecBinds remain
+    -- getBodyEnv :: TypeStateTry TypeEnvironment
+    -- getBodyEnv = do
+      -- binds' <- getBodyEnv binds
+      -- return $ extendMany binds' tenv
+    -- checkAllBinds [] = return ()
+    -- checkAllBinds ((res, name, params, body) : remain) =
+      -- checkType body res (extendMany params bodyEnv) >> checkAllBinds remain
+--

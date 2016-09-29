@@ -62,7 +62,7 @@ data Expression =
   | LetExpr [(String, Expression)] Expression
   | BinOpExpr BinOp Expression Expression
   | UnaryOpExpr UnaryOp Expression
-  | CondExpr [(Expression, Expression)]
+  | IfExpr Expression Expression Expression
   | ProcExpr [(String, Maybe Type)] Expression
   | CallExpr Expression [Expression]
   | LetRecExpr [(Maybe Type, String, [(String, Maybe Type)], Expression)] Expression
@@ -138,6 +138,9 @@ unpackProc notProc         =
 
 type TypeVariable = Integer
 
+succTypeVar :: TypeVariable -> TypeVariable
+succTypeVar = (1 +)
+
 data Type = TypeInt
           | TypeBool
           | TypeProc [Type] Type
@@ -155,10 +158,7 @@ instance Show Type where
   show (TypeVar n) = "t" `mappend` show n
 
 data TypeError =
-    TypeMismatch Type Type Expression
-  | ParamsTypeMismatch [Type] [Type] Expression
-  | CallNotProcVal Type
-  | UnboundVar String
+    UnboundVar String
   | UnknownOperator String
   | TypeUnifyError Type Type Expression
   | TypeOccurError Type Type Expression
@@ -166,28 +166,20 @@ data TypeError =
   deriving (Eq)
 
 instance Show TypeError where
-  show (TypeMismatch t1 t2 expr) = concat
-    [ "Expect type: ", show t1
-    , ", but got: ", show t2
-    , ", in expression: ", show expr
-    ]
-  show (ParamsTypeMismatch paramTypes argTypes proc) = concat
-    [ "Expect types: ", show paramTypes
-    , ", but got: ", show argTypes
-    , ", when calling: ", show proc
-    ]
-  show (CallNotProcVal typ) =
-    "Operator of call expression should be procedure but got: "
-    `mappend` show typ
   show (UnboundVar name) =
     "Trying to check type of an unbound variable: " `mappend` name
   show (UnknownOperator name) =
     "Unknown operator: " `mappend` name
   show (TypeDefaultError msg) = msg
   show (TypeUnifyError t1 t2 expr) = concat
-    [ "Fail to unify type ", show t1, " and type ", show t2, "." ]
+    [ "Fail to match type ", show t1
+    , " and type ", show t2
+    , " in expression: ", show expr
+    ]
   show (TypeOccurError t1 t2 expr) = concat
-    [ "Type ", show t1, " occurs in type ", show t2 ]
+    [ "Type ", show t1, " occurs in type ", show t2
+    , " in expression: ", show expr
+    ]
 
 type Substitution = [(TypeVariable, Type)]
 
@@ -202,9 +194,16 @@ applySubst subst typ = case typ of
           res' = applySubst subst res
   _ -> typ
 
+substTypeVar :: Type -> TypeVariable -> Type -> Type
+substTypeVar originT var varT = case originT of
+  TypeProc argTs resT -> TypeProc (fmap substFunc argTs) (substFunc resT)
+    where substFunc typ = substTypeVar typ var varT
+  TypeVar originVar -> if originVar == var then varT else originT
+  _ -> originT
+
 extendSubst :: TypeVariable -> Type -> Substitution -> Substitution
-extendSubst var typ subst = (var, typ) : newSubst
-  where newSubst = [(v, applySubst subst t) | (v, t) <- subst]
+extendSubst var typ subst =  newSubst `mappend` [(var, typ)]
+  where newSubst = [(v, substTypeVar t var typ) | (v, t) <- subst]
 
 notOccurIn :: TypeVariable -> Type -> Bool
 notOccurIn var typ = case typ of

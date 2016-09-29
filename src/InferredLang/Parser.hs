@@ -135,7 +135,7 @@ unaryOpExpr = do
   expr <- parens expression
   return $ UnaryOpExpr op expr
 
--- | IfExpr ::= if Expression then Expression
+-- | IfExpr ::= if Expression then Expression else Expression
 ifExpr :: Parser Expression
 ifExpr = do
   keyWord "if"
@@ -144,7 +144,7 @@ ifExpr = do
   thenE <- expression
   keyWord "else"
   elseE <- expression
-  return $ CondExpr [(ifE, thenE), (ConstExpr (ExprBool True), elseE)]
+  return $ IfExpr ifE thenE elseE
 
 -- | VarExpr ::= Identifier
 varExpr :: Parser Expression
@@ -204,20 +204,6 @@ manyExprs = sepBy expression comma
 many1Exprs :: Parser [Expression]
 many1Exprs = sepBy1 expression comma
 
--- | CondExpr ::= cond {Expression ==> Expression}* end
-condExpr :: Parser Expression
-condExpr = do
-  keyWord "cond"
-  pairs <- many pair
-  keyWord "end"
-  return $ CondExpr pairs
-  where
-    pair = try $ do
-      expr1 <- expression
-      longArrow
-      expr2 <- expression
-      return (expr1, expr2)
-
 -- | ProcExpr ::= proc ({Identifier : (Type | ?)}*(,)) Expression
 procExpr :: Parser Expression
 procExpr = do
@@ -236,7 +222,6 @@ callExpr = parens $ do
 --              ::= BinOpExpr
 --              ::= UnaryOpExpr
 --              ::= IfExpr
---              ::= CondExpr
 --              ::= VarExpr
 --              ::= LetExpr
 --              ::= ProcExpr
@@ -249,7 +234,6 @@ expression = foldl1 (<|>) (fmap try expressionList)
       , binOpExpr
       , unaryOpExpr
       , ifExpr
-      , condExpr
       , varExpr
       , letExpr
       , procExpr

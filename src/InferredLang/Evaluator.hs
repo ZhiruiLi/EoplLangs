@@ -5,12 +5,12 @@ module InferredLang.Evaluator
 , evalProgram
 ) where
 
+import           Control.Applicative      ((<|>))
+import           Control.Arrow            (second)
+import           Data.Maybe               (fromMaybe)
 import           InferredLang.Data
 import           InferredLang.Parser
 import           InferredLang.TypeChecker (typeOfExpression)
-import           Control.Applicative     ((<|>))
-import           Control.Arrow           (second)
-import           Data.Maybe              (fromMaybe)
 
 type EvaluateResult = Try ExpressedValue
 
@@ -37,7 +37,7 @@ valueOf (VarExpr var) env              = evalVarExpr var env
 valueOf (LetRecExpr procs recBody) env = evalLetRecExpr procs recBody env
 valueOf (BinOpExpr op expr1 expr2) env = evalBinOpExpr op expr1 expr2 env
 valueOf (UnaryOpExpr op expr) env      = evalUnaryOpExpr op expr env
-valueOf (CondExpr pairs) env           = evalCondExpr pairs env
+valueOf (IfExpr ifE thenE elseE) env   = evalIfExpr ifE thenE elseE env
 valueOf (LetExpr bindings body) env    = evalLetExpr bindings body env
 valueOf (ProcExpr params body) env     = evalProcExpr params body env
 valueOf (CallExpr rator rand) env      = evalCallExpr rator rand env
@@ -58,8 +58,8 @@ denoToExpr (DenoProc p) = ExprProc p
 evalVarExpr :: String -> Environment -> EvaluateResult
 evalVarExpr var env = return . denoToExpr $ applyForce env var
 
-evalLetRecExpr :: [(Type, String, [(String, Type)], Expression)] -> Expression
-               -> Environment
+evalLetRecExpr :: [(Maybe Type, String, [(String, Maybe Type)], Expression)]
+               -> Expression -> Environment
                -> EvaluateResult
 evalLetRecExpr procsSubUnits recBody env =
   valueOf recBody $ extendRecMany noTypedProcs env
@@ -142,12 +142,12 @@ evalUnaryOpExpr op expr env = do
   v <- valueOf expr env
   func v
 
-evalCondExpr :: [(Expression, Expression)] -> Environment -> EvaluateResult
-evalCondExpr [] _ = throwError $ DefaultError "No predicate is true."
-evalCondExpr ((e1, e2):pairs) env = do
+evalIfExpr :: Expression -> Expression -> Expression -> Environment
+           -> EvaluateResult
+evalIfExpr e1 e2 e3 env = do
   val <- valueOf e1 env
   bool <- unpackBool val
-  if bool then valueOf e2 env else evalCondExpr pairs env
+  valueOf (if bool then e2 else e3) env
 
 evalLetExpr :: [(String, Expression)] -> Expression -> Environment
             -> EvaluateResult
@@ -171,7 +171,8 @@ evalLetStarExpr ((var, expr):pairs) body env = do
   val <- valueOf expr env
   evalLetStarExpr pairs body (extend var (exprToDeno val) env)
 
-evalProcExpr :: [(String, Type)] -> Expression -> Environment -> EvaluateResult
+evalProcExpr :: [(String, Maybe Type)] -> Expression -> Environment
+             -> EvaluateResult
 evalProcExpr params body env =
   return . ExprProc $ Procedure untypedParams body env
   where untypedParams = fmap fst params

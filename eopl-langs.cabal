@@ -78,6 +78,11 @@ library
                      , CheckedLang.Parser
                      , CheckedLang.TypeChecker
                      
+                     , InferredLang.Data
+                     , InferredLang.Evaluator
+                     , InferredLang.Parser
+                     , InferredLang.TypeChecker
+                     
   build-depends:       base 
                      , megaparsec
                      , containers
