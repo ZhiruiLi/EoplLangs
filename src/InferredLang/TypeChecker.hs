@@ -197,7 +197,8 @@ typeOfProcExpr :: [(String, Maybe Type)] -> Expression -> TypeEnvironment
 typeOfProcExpr mayParams body tenv = do
   params <- ensureAllBinds mayParams
   resType <- typeOf body (extendMany params tenv)
-  let paramTypes = fmap snd params
+  subst <- getSubst
+  let paramTypes = fmap (applySubst subst . snd) params
   return $ TypeProc paramTypes resType
 
 typeOfExprs :: [Expression] -> TypeEnvironment -> TypeStateTry [Type]
@@ -214,7 +215,8 @@ typeOfCallExpr ratorE argEs tenv = do
   procT <- typeOf ratorE tenv
   argTs <- typeOfExprs argEs tenv
   unifyTypes procT (TypeProc argTs resT) (CallExpr ratorE argEs)
-  let (TypeProc _ resT') = procT
+  subst <- getSubst
+  let (TypeProc _ resT') = applySubst subst procT
   (`applySubst` resT') <$> getSubst
 
 typeOfLetRecExpr :: [(Maybe Type, String, [(String, Maybe Type)], Expression)]

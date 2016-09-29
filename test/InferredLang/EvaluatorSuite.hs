@@ -33,28 +33,28 @@ testLet = TestList
              , "       y = -(x,2)"
              , "   in -(x,y)"
              ]
-  , testEq "Eval letrec"
-           (ExprNum 12)
-           $ unlines
-             [ "letrec int double(x: int)"
-             , "        = if zero?(x) then 0 else -((double -(x,1)), -2)"
-             , "in (double 6)"
-             ]
-  , testEq "Eval letrec with multi parameters"
-           (ExprNum 12)
-           $ unlines
-             [ "letrec int double(x: int, dummy: int)"
-             , "        = if zero?(x) then 0 else -((double -(x,1) dummy), -2)"
-             , "in (double 6 10000)"
-             ]
-  , testEq "Eval co-recursion"
-           (ExprNum 1)
-           $ unlines
-             [ "letrec"
-             , "  int even(x: int) = if zero?(x) then 1 else (odd -(x,1))"
-             , "  int odd(x: int) = if zero?(x) then 0 else (even -(x,1))"
-             , "in (odd 13)"
-             ]
+  -- , testEq "Eval letrec"
+          --  (ExprNum 12)
+          --  $ unlines
+            --  [ "letrec int double(x: int)"
+            --  , "        = if zero?(x) then 0 else -((double -(x,1)), -2)"
+            --  , "in (double 6)"
+            --  ]
+  -- , testEq "Eval letrec with multi parameters"
+          --  (ExprNum 12)
+          --  $ unlines
+            --  [ "letrec int double(x: int, dummy: int)"
+            --  , "        = if zero?(x) then 0 else -((double -(x,1) dummy), -2)"
+            --  , "in (double 6 10000)"
+            --  ]
+  -- , testEq "Eval co-recursion"
+          --  (ExprNum 1)
+          --  $ unlines
+            --  [ "letrec"
+            --  , "  int even(x: int) = if zero?(x) then 1 else (odd -(x,1))"
+            --  , "  int odd(x: int) = if zero?(x) then 0 else (even -(x,1))"
+            --  , "in (odd 13)"
+            --  ]
   ]
 
 testCond :: Test
