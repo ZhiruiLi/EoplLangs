@@ -38,20 +38,94 @@ testOp = TestList
 testLet :: Test
 testLet = TestList
   [ testEq "Type of var" TypeInt "let x = 1 in x"
-  -- , testEq "Type of letrec expression 1"
-          --  TypeInt
-          --  $ unlines
-            --  [ "letrec int f(x: int, y: int) = 3"
-            --  , "       bool g(x: bool) = x      in"
-            --  , "(f 1 2)"
-            --  ]
-  -- , testEq "Type of letrec expression 2"
-          --  (TypeProc [TypeInt, TypeInt] TypeInt)
-          --  $ unlines
-            --  [ "letrec int f(x: int, y: int) = 3"
-            --  , "       bool g(x: bool) = x      in"
-            --  , "f"
-            --  ]
+  , testEq "Simple type for applying letrec expression"
+           TypeInt
+           "letrec int f(x: int, y: int) = 3 in (f 1 2)"
+  , testEq "Simple infer type for applying letrec expression"
+           TypeInt
+           "letrec ? f(x: ?, y: ?) = +(x, y) in (f 1 2)"
+  , testEq "Polymorphic infer type for applying letrec expression"
+           TypeInt
+           "letrec ? f(x: ?, y: ?) = x in (f 1 2)"
+  , testEq "Type of function in letrec expression"
+           (TypeProc [TypeInt] TypeInt)
+           "letrec int f(x: int) = 3 in f"
+  , testEq "Type of polymorphic function in letrec expression"
+           (TypeProc [TypeInt] TypeBool)
+           "letrec ? f(x: ?) = zero?(x) in f"
+  , testEq "Type of letrec expression (recursive)"
+           TypeInt
+           $ unlines
+             [ "letrec int double(x: int)"
+             , "        = if zero?(x) then 0 else -((double -(x,1)), -2)"
+             , "in (double 6)"
+             ]
+  , testEq "Inferr type of letrec expression (recursive)"
+           TypeInt
+           $ unlines
+             [ "letrec ? double(x: ?)"
+             , "        = if zero?(x) then 0 else -((double -(x,1)), -2)"
+             , "in (double 6)"
+             ]
+  , testEq "Inferr type of function letrec expression (recursive)"
+           (TypeProc [TypeInt] TypeInt)
+           $ unlines
+             [ "letrec ? double(x: ?)"
+             , "        = if zero?(x) then 0 else -((double -(x,1)), -2)"
+             , "in double"
+             ]
+  , testEq "Inferr type of function letrec expression (recursive)"
+           (TypeProc [TypeInt] TypeInt)
+           $ unlines
+             [ "letrec ? double(x: ?)"
+             , "        = if zero?(x) then 0 else -((double -(x,1)), -2)"
+             , "in double"
+             ]
+  , testEq "Type of letrec with multi parameters"
+           TypeInt
+           $ unlines
+             [ "letrec int double(x: int, dummy: int)"
+             , "        = if zero?(x) then 0 else -((double -(x,1) dummy), -2)"
+             , "in (double 6 10000)"
+             ]
+  , testEq "Infer type of letrec with multi parameters"
+           TypeInt
+           $ unlines
+             [ "letrec ? double(x: ?, dummy: ?)"
+             , "        = if zero?(x) then 0 else -((double -(x,1) dummy), -2)"
+             , "in (double 6 10000)"
+             ]
+  , testEq "Infer type of function with multi parameters in letrec expression"
+           (TypeProc [TypeInt, TypeVar 1] TypeInt)
+           $ unlines
+             [ "letrec ? double(x: ?, dummy: ?)"
+             , "        = if zero?(x) then 0 else -((double -(x,1) dummy), -2)"
+             , "in double"
+             ]
+  , testEq "Type of co-recursion body in letrec expression"
+           TypeInt
+           $ unlines
+             [ "letrec"
+             , "  int even(x: int) = if zero?(x) then 1 else (odd -(x,1))"
+             , "  int odd(x: int) = if zero?(x) then 0 else (even -(x,1))"
+             , "in (odd 13)"
+             ]
+  , testEq "Infer type of co-recursion body in letrec expression"
+           TypeInt
+           $ unlines
+             [ "letrec"
+             , "  ? even(x: ?) = if zero?(x) then 1 else (odd -(x,1))"
+             , "  ? odd(x: ?) = if zero?(x) then 0 else (even -(x,1))"
+             , "in (odd 13)"
+             ]
+  , testEq "Infer type of co-recursion function in letrec expression"
+           (TypeProc [TypeInt] TypeInt)
+           $ unlines
+             [ "letrec"
+             , "  ? even(x: ?) = if zero?(x) then 1 else (odd -(x,1))"
+             , "  ? odd(x: ?) = if zero?(x) then 0 else (even -(x,1))"
+             , "in odd"
+             ]
   ]
 
 testProc :: Test

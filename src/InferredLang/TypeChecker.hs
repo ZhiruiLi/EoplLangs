@@ -49,7 +49,6 @@ checkType expr expect tenv = do
   actual <- typeOf expr tenv
   unifyTypes expect actual expr
 
-
 unifyTypes :: Type -> Type -> Expression -> TypeStateTry ()
 unifyTypes typ1 typ2 expr = do
   subst <- getSubst
@@ -68,15 +67,17 @@ unifyTypes typ1 typ2 expr = do
     unifyTypes' t1@(TypeProc params1 res1)
                 t2@(TypeProc params2 res2) = do
       paramPairs <- safeZip params1 params2
-      unifyAll $ mappend paramPairs [(res1, res2)]
+      unifyAllTypes (mappend paramPairs [(res1, res2)]) expr
       where
         safeZip :: [a] -> [b] -> TypeStateTry [(a, b)]
         safeZip p1 p2 = if length p1 == length p2
           then return $ zip p1 p2
           else throwError $ TypeUnifyError t1 t2 expr
     unifyTypes' t1 t2 = throwError $ TypeUnifyError t1 t2 expr
-    unifyAll :: [(Type, Type)] -> TypeStateTry ()
-    unifyAll = foldl (\acc (t1, t2) -> acc >> unifyTypes' t1 t2) (return ())
+
+unifyAllTypes :: [(Type, Type)] -> Expression -> TypeStateTry ()
+unifyAllTypes lst expr = foldl func (return ()) lst
+  where func acc (t1, t2) = acc >> unifyTypes t1 t2 expr
 
 nextVar :: TypeStateTry TypeVariable
 nextVar = do
@@ -222,26 +223,31 @@ typeOfCallExpr ratorE argEs tenv = do
 typeOfLetRecExpr :: [(Maybe Type, String, [(String, Maybe Type)], Expression)]
                  -> Expression -> TypeEnvironment
                  -> TypeResult
-typeOfLetRecExpr binds body tenv = undefined
-
--- typeOfLetRecExpr binds body tenv = do
-  -- checkAllBinds binds
-  -- typeOf body bodyEnv
-  -- where
-    -- getRecBinds :: [(Maybe Type, String, [(String, Maybe Type)]
-                -- -> TypeStateTry [(Type, String, [(String, Type)]
-    -- getRecBinds [] = return []
-    -- getRecBinds ((mayResT, name, params, expr) : remain) = do
-      -- resT <- ensureType mayResT
-      -- let mayTs = fmap snd params
-      -- paramTs <- ensureAllTypes mayTs
-      -- let params' = zip (fmap fst params) paramTs
-      -- ((resT, name, params') :) <$> getRecBinds remain
-    -- getBodyEnv :: TypeStateTry TypeEnvironment
-    -- getBodyEnv = do
-      -- binds' <- getBodyEnv binds
-      -- return $ extendMany binds' tenv
-    -- checkAllBinds [] = return ()
-    -- checkAllBinds ((res, name, params, body) : remain) =
-      -- checkType body res (extendMany params bodyEnv) >> checkAllBinds remain
---
+typeOfLetRecExpr mayBinds body tenv = do
+  binds <- ensureRecBinds mayBinds
+  let recBinds = allRecBinds binds
+  unifyAllRecBinds binds (extendMany recBinds tenv)
+  subst <- getSubst
+  let recBinds' = fmap (second (applySubst subst)) recBinds
+  typeOf body (extendMany recBinds' tenv)
+  where
+    ensureRecBind (mayResT, name, mayParams, resBody) = do
+      params <- ensureAllBinds mayParams
+      resT <- ensureType mayResT
+      return (resT, name, params, resBody)
+    ensureRecBinds = foldr func (return [])
+    func recBind acc = do
+      bind <- ensureRecBind recBind
+      binds <- acc
+      return $ bind : binds
+    allRecBinds binds =
+      let func (t, name, ps, _) = (name, TypeProc (fmap snd ps) t)
+      in  fmap func binds
+    unifyAllRecBinds :: [(Type, String, [(String, Type)], Expression)]
+                     -> TypeEnvironment
+                     -> TypeStateTry ()
+    unifyAllRecBinds [] _ = return ()
+    unifyAllRecBinds ((resT, _, params, body) : remain) tenv = do
+      resT' <- typeOf body (extendMany params tenv)
+      unifyTypes resT resT' body
+      unifyAllRecBinds remain tenv
