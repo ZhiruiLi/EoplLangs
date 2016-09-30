@@ -77,6 +77,9 @@ testProc = TestList
   , testEq "Infer type of higher order procedure"
            (TypeProc [TypeProc [TypeInt] TypeInt, TypeInt] TypeInt)
            "proc(f: ?, x: ?) +((f x), x)"
+  , testEq "Infer type when applying polymorphic procedure on concrete value"
+           TypeInt
+           "(proc(x: ?, y: ?) x 1 zero?(3))"
   , testError "Error for calling not procedure value"
               (TypeUnifyError TypeInt (TypeProc [TypeInt] (TypeVar 0)) (CallExpr (VarExpr "x") [constNum 3]))
               "let x = 1 in (x 3)"
