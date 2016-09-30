@@ -4,24 +4,27 @@ module InferredLang.TypeChecker
 , typeOfExpression
 , checkProgramType
 , checkExpressionType
+, printTypeOf
 ) where
 
 import           Control.Arrow            (second)
 import           Control.Monad.Except
 import           Control.Monad.State.Lazy (StateT, get, put, runStateT, state)
 import           InferredLang.Data        hiding (throwError)
-import           InferredLang.Parser      (parseProgram)
+import           InferredLang.Parser      (program)
+import           Text.Megaparsec          (parseErrorPretty, runParser)
 
 type TypeStateTry = StateT (TypeVariable, Substitution) TypeTry
 
 type TypeResult = TypeStateTry Type
 
-printType :: String -> IO ()
-printType input = case parseProgram input of
-  Right prog -> case typeOfProgram prog of
-                  Right typ -> print typ
-                  Left msg  -> print msg
-  Left msg -> print msg
+printTypeOf :: String -> IO ()
+printTypeOf input = case runParser program "Type Printer Parse Error" input of
+  Right prog ->
+    case typeOfProgram prog of
+      Right typ -> print typ
+      Left msg  -> putStrLn $ unlines ["Type Checker Error:", show msg]
+  Left msg -> putStrLn $ parseErrorPretty msg
 
 checkProgramType :: Program -> Type -> TypeTry ()
 checkProgramType (Prog expr) = checkExpressionType expr
