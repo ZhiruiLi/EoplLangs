@@ -15,12 +15,13 @@ typeOfProgram :: Program -> TypeResult
 typeOfProgram (Prog mDefs body) = typeOfExpression mDefs body
 
 typeOfExpression :: [ModuleDef] -> Expression -> TypeResult
-typeOfExpression mDefs expr = typeOf expr (addModuleDefs mDefs empty)
+typeOfExpression mDefs expr = addModuleDefs mDefs empty >>= typeOf expr
 
-addModuleDefs :: [ModuleDef] -> TypeEnvironment -> TypeEnvironment
-addModuleDefs defs tenv = foldl (flip addModuleDef) tenv defs
+addModuleDefs :: [ModuleDef] -> TypeEnvironment -> TypeTry TypeEnvironment
+addModuleDefs defs tenv = foldl func (return tenv) defs
+  where func acc md = do { e <- acc; addModuleDef md e }
 
-addModuleDef :: ModuleDef -> TypeEnvironment -> TypeEnvironment
+addModuleDef :: ModuleDef -> TypeEnvironment -> TypeTry TypeEnvironment
 addModuleDef (ModuleDef name iface body) tenv = undefined
 
 liftMaybe :: TypeError -> Maybe a -> TypeTry a
