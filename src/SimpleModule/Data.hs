@@ -1,29 +1,39 @@
 module SimpleModule.Data where
 
-import qualified Data.List       as L
-import qualified Data.Map        as M
-import           Data.Maybe      (fromMaybe)
-import qualified Text.Megaparsec as Mega
+import           Control.Monad.Except
+import qualified Data.List            as L
+import qualified Data.Map             as M
+import           Data.Maybe           (fromMaybe)
+import qualified Text.Megaparsec      as Mega
 
 type Try = Either LangError
 
-throwError :: LangError -> Try a
-throwError = Left
+type GeneralEnv a = [EnvItem a]
 
-type GeneralEnv = M.Map String
+data EnvItem a = NamedEnv String (M.Map String a)
+               | UnnamedEnv (M.Map String a)
 
 type Environment = GeneralEnv DenotedValue
 
 type TypeEnvironment = GeneralEnv Type
 
+type EnvTry a = Either EnvError a
+
+data EnvError = NamedEnvNotFound String
+              | NamedEnvKeyNotFound String String
+              | UnnamedEnvKeyNotFound String
+              deriving (Show, Eq)
+
 empty :: GeneralEnv a
-empty = M.empty
+empty = []
 
 initEnvironment :: [(String, a)] -> GeneralEnv a
-initEnvironment = M.fromList
+initEnvironment lst = [UnnamedEnv $ M.fromList lst]
 
 extend :: String -> a -> GeneralEnv a -> GeneralEnv a
-extend = M.insert
+extend k v []                  = initEnvironment [(k, v)]
+extend k v (UnnamedEnv e : es) = (UnnamedEnv $ M.insert k v e) : es
+extend k v es                  = (UnnamedEnv $ M.singleton k v) : es
 
 extendRec :: String -> [String] -> Expression -> Environment -> Environment
 extendRec name params body env = newEnv
@@ -38,18 +48,30 @@ extendRecMany triples env = newEnv
                (name, DenoProc $ Procedure params body newEnv)) triples)
       env
 
-apply :: GeneralEnv a -> String -> Maybe a
-apply = flip M.lookup
-
 extendMany :: [(String, a)] -> GeneralEnv a -> GeneralEnv a
 extendMany = flip (foldl func)
   where
     func env (var, val) = extend var val env
 
-applyForce :: GeneralEnv a -> String -> a
-applyForce env var = fromMaybe
-  (error $ "Var " `mappend` var `mappend` " is not in environment!")
-  (apply env var)
+extendNamed :: String -> [(String, a)] -> GeneralEnv a -> GeneralEnv a
+extendNamed name binds env = NamedEnv name (M.fromList binds) : env
+
+apply :: GeneralEnv a -> String -> EnvTry a
+apply [] k                  = throwError $ UnnamedEnvKeyNotFound k
+apply (NamedEnv _ _ : es) k = apply es k
+apply (UnnamedEnv e : es) k = case M.lookup k e of
+  Nothing -> apply es k
+  Just x  -> return x
+
+applyNamed :: GeneralEnv a -> String -> String -> EnvTry a
+applyNamed [] name k = throwError $ NamedEnvNotFound name
+applyNamed (UnnamedEnv _ : es) name k = applyNamed es name k
+applyNamed (NamedEnv n e : es) name k =
+  if n == name
+    then case M.lookup k e of
+           Nothing -> throwError $ NamedEnvKeyNotFound name k
+           Just x  -> return x
+    else applyNamed es name k
 
 data Program = Prog [ModuleDef] Expression
   deriving (Show, Eq)

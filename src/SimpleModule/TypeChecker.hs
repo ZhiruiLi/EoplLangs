@@ -4,7 +4,8 @@ module SimpleModule.TypeChecker
 , typeOfExpression
 ) where
 
-import           Control.Arrow     (second)
+import           Control.Arrow        (second)
+import           Control.Monad.Except
 import           SimpleModule.Data
 
 type TypeTry = Either TypeError
@@ -22,21 +23,46 @@ addModuleDefs defs tenv = foldl func (return tenv) defs
   where func acc md = do { e <- acc; addModuleDef md e }
 
 addModuleDef :: ModuleDef -> TypeEnvironment -> TypeTry TypeEnvironment
-addModuleDef (ModuleDef name iface body) tenv = undefined
+addModuleDef (ModuleDef name iface body) tenv = do
+  binds <- matchInterface iface body tenv
+  return $ extendNamed name binds tenv
+
+matchInterface :: Interface -> ModuleBody -> TypeEnvironment
+               -> TypeTry [(String, Type)]
+matchInterface (Interface decls) (ModuleBody defs) tenv =
+  matchInterface' decls
+  where
+    contain [] (Declaration s t) = throwError $ UnimplInterface s t
+    contain (Definition s' e : defs) decl@(Declaration s t) =
+      if s == s'
+        then do { t' <- typeOf e tenv
+                ; if t == t'
+                    then return (s, t)
+                    else throwError $ UnimplInterface s t
+                }
+        else defs `contain` decl
+    func decl acc = do
+      bind <- defs `contain` decl
+      lst <- acc
+      return (bind : lst)
+    matchInterface' = foldr func (return [])
 
 liftMaybe :: TypeError -> Maybe a -> TypeTry a
 liftMaybe _ (Just x) = return x
-liftMaybe y Nothing  = throwTypeError y
+liftMaybe y Nothing  = throwError y
 
-throwTypeError :: TypeError -> TypeTry a
-throwTypeError = Left
+liftEnvTry :: EnvTry a -> TypeTry a
+liftEnvTry (Right x) = return x
+liftEnvTry (Left (NamedEnvNotFound n)) = throwError $ UnboundVar n
+liftEnvTry (Left (NamedEnvKeyNotFound e k)) = throwError $ QualifiedNotFound e k
+liftEnvTry (Left (UnnamedEnvKeyNotFound e)) = throwError $ ModuleNotFound e
 
 checkType :: Expression -> Type -> TypeEnvironment -> TypeResult
 checkType expr expect tenv = do
   actual <- typeOf expr tenv
   if expect == actual
     then return expect
-    else throwTypeError (TypeMismatch expect actual expr)
+    else throwError (TypeMismatch expect actual expr)
 
 typeOf :: Expression -> TypeEnvironment -> TypeResult
 typeOf (ConstExpr val) _            = typeOfConstExpr val
@@ -54,7 +80,7 @@ typeOfConstExpr (ExprNum n)  = return TypeInt
 typeOfConstExpr (ExprBool b) = return TypeBool
 
 typeOfVarExpr :: String -> TypeEnvironment -> TypeResult
-typeOfVarExpr name tenv = liftMaybe err $ apply tenv name
+typeOfVarExpr name tenv =  liftEnvTry $ apply tenv name
   where err = UnboundVar name
 
 typeOfLetExpr :: [(String, Expression)] -> Expression -> TypeEnvironment
@@ -109,7 +135,7 @@ typeOfUnaryOpExpr op e tenv = do
   return tres
 
 typeOfCondExpr :: [(Expression, Expression)] -> TypeEnvironment -> TypeResult
-typeOfCondExpr [] tenv = throwTypeError . TypeDefaultError $
+typeOfCondExpr [] tenv = throwError . TypeDefaultError $
   "Condition expression should contain at least one sub-expressions."
 typeOfCondExpr ((cond, expr) : remain) tenv = do
   checkType cond TypeBool tenv
@@ -143,11 +169,12 @@ typeOfCallExpr proc args tenv = do
   argTypes <- typeOfExprs args tenv
   checkParamsType procType argTypes
   where
+    checkParamsType :: Type -> [Type] -> TypeResult
     checkParamsType (TypeProc paramTypes resType) argTypes =
       if paramTypes == argTypes
         then return resType
-        else throwTypeError $ ParamsTypeMismatch paramTypes argTypes proc
-    checkParamsType wrongType _ = throwTypeError $ CallNotProcVal wrongType
+        else throwError $ ParamsTypeMismatch paramTypes argTypes proc
+    checkParamsType wrongType _ = throwError $ CallNotProcVal wrongType
 
 typeOfLetRecExpr :: [(Type, String, [(String, Type)], Expression)]
                  -> Expression -> TypeEnvironment
