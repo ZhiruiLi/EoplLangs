@@ -13,6 +13,7 @@ import qualified LetRecLang.Suites          as LetRec
 import qualified MutablePairs.Suites        as MutablePairs
 import qualified NamelessIntp.Suites        as Nameless
 import qualified ProcLang.Suites            as Proc
+import qualified SimpleModule.Suites        as SimpleModule
 import           Test.HUnit
 import qualified ThreadsLang.Suites         as Threads
 
@@ -35,5 +36,6 @@ main = do
     , Threads.tests
     , Checked.tests
     , Inferred.tests
+    , SimpleModule.tests
     ]
   return ()

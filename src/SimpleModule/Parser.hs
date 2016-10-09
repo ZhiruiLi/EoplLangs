@@ -5,6 +5,7 @@ module SimpleModule.Parser
 ) where
 
 import           Control.Monad          (void)
+import           Control.Monad.Except
 import           Data.Maybe             (fromMaybe)
 import           SimpleModule.Data
 import           Text.Megaparsec        hiding (ParseError)
@@ -272,7 +273,7 @@ program = do
   return $ Prog mDefns body
 
 -- | ModuleDefn ::= module Identifier interface Interface body ModuleBody
-moduleDefn :: Parser ModuleDefn
+moduleDefn :: Parser ModuleDef
 moduleDefn = do
   keyWord "module"
   mName <- identifier
@@ -280,7 +281,7 @@ moduleDefn = do
   iface <- interface
   keyWord "body"
   mBody <- moduleBody
-  return $ ModuleDefn mName iface mBody
+  return $ ModuleDef mName iface mBody
 
 -- | Interface ::= [ {Declaration}* ]
 interface :: Parser Interface

@@ -2,15 +2,26 @@ module SimpleModule.TypeChecker
 ( typeOf
 , typeOfProgram
 , typeOfExpression
+, printTypeOf
 ) where
 
 import           Control.Arrow        (second)
 import           Control.Monad.Except
 import           SimpleModule.Data
+import           SimpleModule.Parser  (program)
+import           Text.Megaparsec      (parseErrorPretty, runParser)
 
 type TypeTry = Either TypeError
 
 type TypeResult = TypeTry Type
+
+printTypeOf :: String -> IO ()
+printTypeOf input = case runParser program "Type Printer Parse Error" input of
+  Right prog ->
+    case typeOfProgram prog of
+      Right typ -> print typ
+      Left msg  -> putStrLn $ unlines ["Type Checker Error:", show msg]
+  Left msg -> putStrLn $ parseErrorPretty msg
 
 typeOfProgram :: Program -> TypeResult
 typeOfProgram (Prog mDefs body) = typeOfExpression mDefs body
@@ -53,9 +64,9 @@ liftMaybe y Nothing  = throwError y
 
 liftEnvTry :: EnvTry a -> TypeTry a
 liftEnvTry (Right x) = return x
-liftEnvTry (Left (NamedEnvNotFound n)) = throwError $ UnboundVar n
+liftEnvTry (Left (NamedEnvNotFound n)) = throwError $ ModuleNotFound n
 liftEnvTry (Left (NamedEnvKeyNotFound e k)) = throwError $ QualifiedNotFound e k
-liftEnvTry (Left (UnnamedEnvKeyNotFound e)) = throwError $ ModuleNotFound e
+liftEnvTry (Left (UnnamedEnvKeyNotFound e)) = throwError $ UnboundVar e
 
 checkType :: Expression -> Type -> TypeEnvironment -> TypeResult
 checkType expr expect tenv = do
@@ -74,6 +85,7 @@ typeOf (CondExpr branches) tenv     = typeOfCondExpr branches tenv
 typeOf (ProcExpr params body) tenv  = typeOfProcExpr params body tenv
 typeOf (CallExpr proc args) tenv    = typeOfCallExpr proc args tenv
 typeOf (LetRecExpr binds body) tenv = typeOfLetRecExpr binds body tenv
+typeOf (QualifiedVarExpr m v) tenv  = typeOfQualifiedVarExpr m v tenv
 
 typeOfConstExpr :: ExpressedValue -> TypeResult
 typeOfConstExpr (ExprNum n)  = return TypeInt
@@ -188,3 +200,6 @@ typeOfLetRecExpr binds body tenv = checkAllBinds binds >> typeOf body bodyEnv
     checkAllBinds ((res, name, params, body) : remain) =
       checkType body res (extendMany params bodyEnv) >> checkAllBinds remain
 
+typeOfQualifiedVarExpr :: String -> String -> TypeEnvironment -> TypeResult
+typeOfQualifiedVarExpr mName vName tenv =
+  liftEnvTry $ applyNamed tenv mName vName

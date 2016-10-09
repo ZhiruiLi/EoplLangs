@@ -83,6 +83,11 @@ library
                      , InferredLang.Parser
                      , InferredLang.TypeChecker
                      
+                     , SimpleModule.Data
+                     , SimpleModule.Evaluator
+                     , SimpleModule.Parser
+                     , SimpleModule.TypeChecker
+                     
   build-depends:       base 
                      , megaparsec
                      , containers

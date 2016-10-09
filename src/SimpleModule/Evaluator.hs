@@ -7,12 +7,18 @@ module SimpleModule.Evaluator
 
 import           Control.Applicative      ((<|>))
 import           Control.Arrow            (second)
+import           Control.Monad.Except
 import           Data.Maybe               (fromMaybe)
 import           SimpleModule.Data
 import           SimpleModule.Parser
 import           SimpleModule.TypeChecker (typeOfExpression)
 
 type EvaluateResult = Try ExpressedValue
+
+applyForce :: GeneralEnv a -> String -> a
+applyForce env var = case apply env var of
+  Right x -> x
+  Left _  -> error $ concat [ "Var ", var, " is not in scope." ]
 
 liftMaybe :: LangError -> Maybe a -> Try a
 liftMaybe _ (Just x) = return x
@@ -25,11 +31,12 @@ liftTypeError :: Either TypeError a -> Try a
 liftTypeError (Right x)  = return x
 liftTypeError (Left err) = throwError (TypeCheckerError err)
 
-eval :: Expression -> EvaluateResult
-eval expr = liftTypeError (typeOfExpression expr) >> valueOf expr empty
+eval :: [ModuleDef] -> Expression -> EvaluateResult
+eval defs expr =
+  liftTypeError (typeOfExpression defs expr) >> valueOf expr empty
 
 evalProgram :: Program -> EvaluateResult
-evalProgram (Prog mDefs expr) = eval expr
+evalProgram (Prog mDefs expr) = eval mDefs expr
 
 valueOf :: Expression -> Environment -> EvaluateResult
 valueOf (ConstExpr x) _                = evalConstExpr x
