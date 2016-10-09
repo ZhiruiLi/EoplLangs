@@ -29,14 +29,30 @@ typeOfProgram (Prog mDefs body) = typeOfExpression mDefs body
 typeOfExpression :: [ModuleDef] -> Expression -> TypeResult
 typeOfExpression mDefs expr = addModuleDefs mDefs empty >>= typeOf expr
 
+extendInterfaces :: [ModuleDef] -> TypeEnvironment -> TypeTry TypeEnvironment
+extendInterfaces defs tenv = foldl func (return tenv) defs
+  where
+    extractDecls :: [Declaration] -> [(String, Type)]
+    extractDecls = fmap (\(Declaration s t) -> (s, t))
+    extendInterface :: String -> Interface -> TypeEnvironment
+                    -> TypeTry TypeEnvironment
+    extendInterface mName (Interface decls) tenv =
+      if tenv `hasName` mName
+        then throwError $ ModuleNameConflict mName
+        else return $ addNamed mName (extractDecls decls) tenv
+    func :: TypeTry TypeEnvironment -> ModuleDef -> TypeTry TypeEnvironment
+    func acc (ModuleDef name iface _) = acc >>= extendInterface name iface
+
 addModuleDefs :: [ModuleDef] -> TypeEnvironment -> TypeTry TypeEnvironment
 addModuleDefs defs tenv = foldl func (return tenv) defs
   where func acc md = do { e <- acc; addModuleDef md e }
 
 addModuleDef :: ModuleDef -> TypeEnvironment -> TypeTry TypeEnvironment
-addModuleDef (ModuleDef name iface body) tenv = do
-  binds <- matchInterface iface body tenv
-  return $ extendNamed name binds tenv
+addModuleDef (ModuleDef name iface body) tenv =
+  if tenv `hasName` name
+    then throwError $ ModuleNameConflict name
+    else do { binds <- matchInterface iface body tenv
+            ; return $ addNamed name binds tenv }
 
 matchInterface :: Interface -> ModuleBody -> TypeEnvironment
                -> TypeTry [(String, Type)]
@@ -58,14 +74,49 @@ matchInterface (Interface decls) (ModuleBody defs) tenv =
       return (bind : lst)
     matchInterface' = foldr func (return [])
 
+-- | This implementation can let the previous modules use definitions in the latter
+-- defined modules, but it's hard to implement it in evaluator, so I keep the poor
+-- implementation.
+{-
+matchInterface :: Interface -> ModuleBody -> TypeEnvironment
+               -> TypeTry ()
+matchInterface (Interface decls) (ModuleBody defs) tenv =
+  matchInterface' decls
+  where
+    contain [] (Declaration s t) = throwError $ UnimplInterface s t
+    contain (Definition s' e : defs) decl@(Declaration s t) =
+      if s == s'
+        then do { t' <- typeOf e tenv
+                ; if t == t'
+                    then return (s, t)
+                    else throwError $ UnimplInterface s t
+                }
+        else defs `contain` decl
+    func decl acc = do
+      bind <- defs `contain` decl
+      acc
+    matchInterface' = foldr func (return ())
+
+addModuleDefs :: [ModuleDef] -> TypeEnvironment -> TypeTry TypeEnvironment
+addModuleDefs defs tenv = do
+  newEnv <- extendInterfaces defs tenv
+  checkModuleIfaces defs newEnv
+  return newEnv
+  where
+    checkModuleIfaces :: [ModuleDef] -> TypeEnvironment -> TypeTry ()
+    checkModuleIfaces [] _ = return ()
+    checkModuleIfaces (ModuleDef _ iface body : ds) tenv =
+      matchInterface iface body tenv >> checkModuleIfaces ds tenv
+-}
+
 liftMaybe :: TypeError -> Maybe a -> TypeTry a
 liftMaybe _ (Just x) = return x
 liftMaybe y Nothing  = throwError y
 
 liftEnvTry :: EnvTry a -> TypeTry a
 liftEnvTry (Right x) = return x
-liftEnvTry (Left (NamedEnvNotFound n)) = throwError $ ModuleNotFound n
-liftEnvTry (Left (NamedEnvKeyNotFound e k)) = throwError $ QualifiedNotFound e k
+liftEnvTry (Left (NamedEnvNotFound n)) = throwError $ UnboundModule n
+liftEnvTry (Left (NamedEnvKeyNotFound e k)) = throwError $ UnboundQualified e k
 liftEnvTry (Left (UnnamedEnvKeyNotFound e)) = throwError $ UnboundVar e
 
 checkType :: Expression -> Type -> TypeEnvironment -> TypeResult

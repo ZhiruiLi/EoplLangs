@@ -114,8 +114,8 @@ testModule = TestList
                 , "let z = 99"
                 , "in -(z, from m1 take b)"
                 ]
-  , testError "Call a unexposed var of a module"
-              (QualifiedNotFound "m1" "b")
+  , testError "Calling a unexposed var of a module"
+              (UnboundQualified "m1" "b")
               $ unlines
                 [ "module m1"
                 , "interface"
@@ -126,12 +126,23 @@ testModule = TestList
                 , "let z = 99"
                 , "in -(z, from m1 take b)"
                 ]
-  , testError "Unbound module error"
-              (ModuleNotFound "m1")
+  , testError "Getting var from a undeclared module"
+              (UnboundModule "m1")
               $ unlines
-              [ "let z = 99"
-              , "in -(z, from m1 take b)"
-              ]
+                [ "let z = 99"
+                , "in -(z, from m1 take b)"
+                ]
+  , testError "Redefining same module name"
+              (ModuleNameConflict "m1")
+              $ unlines
+                [ "module m1"
+                , "interface []"
+                , "body []"
+                , "module m1"
+                , "interface []"
+                , "body []"
+                , "1"
+                ]
   , testEq "Test program with modules"
            TypeInt
            $ unlines
@@ -154,6 +165,43 @@ testModule = TestList
              , "let z = 99"
              , "in -(z, -(from m1 take a, from m2 take a))"
              ]
+  , testEq "The latter defined module should be able to call vars defined in previous modules"
+           TypeInt
+           $ unlines
+             [ "module m1"
+             , "interface"
+             , "  [a : int"
+             , "   b : int"
+             , "   c : int]"
+             , "body"
+             , "  [a = 11"
+             , "   b = 44"
+             , "   c = 55]"
+             , "module m2"
+             , "interface"
+             , "  [a : int"
+             , "   b : int]"
+             , "body"
+             , "  [a = from m1 take c"
+             , "   b = 77]"
+             , "let z = 99"
+             , "in -(z, +(from m1 take a, from m2 take a))"
+             ]
+  , testError "The module definition should following the let* sementics"
+              (UnboundModule "m2")
+              $ unlines
+                [ "module m1"
+                , "interface"
+                , "  [a : int]"
+                , "body"
+                , "  [a = from m2 take a]"
+                , "module m2"
+                , "interface"
+                , "  [a : int]"
+                , "body"
+                , "  [a = 10]"
+                , "1"
+                ]
   ]
 
 testEq :: String -> Type -> String -> Test

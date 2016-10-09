@@ -53,8 +53,21 @@ extendMany = flip (foldl func)
   where
     func env (var, val) = extend var val env
 
-extendNamed :: String -> [(String, a)] -> GeneralEnv a -> GeneralEnv a
-extendNamed name binds env = NamedEnv name (M.fromList binds) : env
+addNamed :: String -> [(String, a)] -> GeneralEnv a -> GeneralEnv a
+addNamed name binds env = NamedEnv name (M.fromList binds) : env
+
+hasName :: GeneralEnv a -> String -> Bool
+hasName [] _                   = False
+hasName (NamedEnv n' _ : es) n | n == n' = True
+hasName (_ : es) n             = es `hasName` n
+
+extendNamed :: String -> String -> a -> GeneralEnv a -> GeneralEnv a
+extendNamed mName k v env = extendNamed' env []
+  where
+    extendNamed' [] acc = addNamed mName [(k, v)] (reverse acc)
+    extendNamed' (NamedEnv n m : es) acc | n == mName =
+      reverse (reverse es `mappend` (NamedEnv n (M.insert k v m) : acc))
+    extendNamed' (e : es) acc = extendNamed' es (e : acc)
 
 apply :: GeneralEnv a -> String -> EnvTry a
 apply [] k                  = throwError $ UnnamedEnvKeyNotFound k
@@ -160,8 +173,9 @@ data TypeError =
   | UnknownOperator String
   | TypeDefaultError String
   | UnimplInterface String Type
-  | QualifiedNotFound String String  -- QualifiedNotFound module var
-  | ModuleNotFound String
+  | UnboundQualified String String  -- UnboundQualified module var
+  | UnboundModule String
+  | ModuleNameConflict String
   deriving (Eq)
 
 instance Show TypeError where
@@ -184,9 +198,10 @@ instance Show TypeError where
     "Unknown operator: " `mappend` name
   show (UnimplInterface name typ) = concat
     [ "Try to offer a unsupplied interface ", name, " of type ", show typ ]
-  show (QualifiedNotFound mName vName) = concat
+  show (UnboundQualified mName vName) = concat
     [ "Module ", mName, " does not export interface named ", vName ]
-  show (ModuleNotFound m) = "Unknown module " `mappend` m
+  show (UnboundModule m) = "Unknown module " `mappend` m
+  show (ModuleNameConflict n) = "Module name conflict: " `mappend` n
 
 type Unpacker a = ExpressedValue -> Try a
 
