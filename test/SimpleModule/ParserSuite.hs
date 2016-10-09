@@ -129,12 +129,51 @@ testExpression = TestList
            "let bar = 1 in if zero? (bar) then 3 else zero"
   ]
 
+iface :: [(String, Type)] -> Interface
+iface lst = Interface (fmap (uncurry Declaration) lst)
+
+mbody :: [(String, Expression)] -> ModuleBody
+mbody lst = ModuleBody (fmap (uncurry Definition) lst)
+
 testParseProgram :: Test
 testParseProgram = TestList
-  [ testEq "Parse program (with spaces)"
+  [ testEq "Parse program without module definitions"
             (Prog [] (LetExpr [("x", constNum 3)]
                                (VarExpr "x")))
-            "let x = 3 in x"
+            "  let x = 3 in x "
+  , testEq "Parse program with module definitions"
+           (let i1 = iface [("a", TypeInt), ("b", TypeInt), ("c", TypeInt)]
+                b1 = mbody [("a", constNum 33), ("b", constNum 44), ("c", constNum 55)]
+                m1 = ModuleDef "m1" i1 b1
+                i2 = iface [("a", TypeInt), ("b", TypeInt)]
+                b2 = mbody [("a", constNum 66), ("b", constNum 77)]
+                m2 = ModuleDef "m2" i2 b2
+                body = LetExpr [("z", constNum 99)]
+                               (BinOpExpr Sub
+                                 (VarExpr "z")
+                                 (BinOpExpr Sub (QualifiedVarExpr "m1" "a")
+                                                (QualifiedVarExpr "m2" "a")))
+            in  Prog [m1, m2] body)
+           $ unlines
+             [ "module m1"
+             , "interface"
+             , "  [a : int"
+             , "   b : int"
+             , "   c : int]"
+             , "body"
+             , "  [a = 33"
+             , "   b = 44"
+             , "   c = 55]"
+             , "module m2"
+             , "interface"
+             , "  [a : int"
+             , "   b : int]"
+             , "body"
+             , "  [a = 66"
+             , "   b = 77]"
+             , "let z = 99"
+             , "in -(z, -(from m1 take a, from m2 take a))"
+             ]
   ]
   where
     testEq msg expect prog = TestCase $

@@ -16,6 +16,7 @@ tests = TestList
   , testLet
   , testProc
   , testCond
+  , testModule
   ]
 
 testBase :: Test
@@ -98,6 +99,61 @@ testCond = TestList
                 , "     zero?(4) ==> 3"
                 , "end"
                 ]
+  ]
+
+testModule :: Test
+testModule = TestList
+  [ testError "Unimplement interface"
+              (UnimplInterface "a" TypeInt)
+              $ unlines
+                [ "module m1"
+                , "interface"
+                , "  [a : int]"
+                , "body"
+                , "  [b = 44]"
+                , "let z = 99"
+                , "in -(z, from m1 take b)"
+                ]
+  , testError "Call a unexposed var of a module"
+              (QualifiedNotFound "m1" "b")
+              $ unlines
+                [ "module m1"
+                , "interface"
+                , "  [a : int]"
+                , "body"
+                , "  [a = 33"
+                , "   b = 44]"
+                , "let z = 99"
+                , "in -(z, from m1 take b)"
+                ]
+  , testError "Unbound module error"
+              (ModuleNotFound "m1")
+              $ unlines
+              [ "let z = 99"
+              , "in -(z, from m1 take b)"
+              ]
+  , testEq "Test program with modules"
+           TypeInt
+           $ unlines
+             [ "module m1"
+             , "interface"
+             , "  [a : int"
+             , "   b : int"
+             , "   c : int]"
+             , "body"
+             , "  [a = 33"
+             , "   b = 44"
+             , "   c = 55]"
+             , "module m2"
+             , "interface"
+             , "  [a : int"
+             , "   b : int]"
+             , "body"
+             , "  [a = 66"
+             , "   b = 77]"
+             , "let z = 99"
+             , "in -(z, -(from m1 take a, from m2 take a))"
+             ]
   ]
 
 testEq :: String -> Type -> String -> Test

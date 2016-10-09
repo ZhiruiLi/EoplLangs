@@ -233,7 +233,7 @@ qualifiedVarExpr :: Parser Expression
 qualifiedVarExpr = do
   keyWord "from"
   moduleName <- identifier
-  keyWord "tack"
+  keyWord "take"
   varName <- identifier
   return $ QualifiedVarExpr moduleName varName
 
@@ -267,14 +267,14 @@ expression = foldl1 (<|>) (fmap try expressionList)
 program :: Parser Program
 program = do
   spaceConsumer
-  mDefns <- many moduleDefn
+  mDefs <- many moduleDef
   body <- expression
   eof
-  return $ Prog mDefns body
+  return $ Prog mDefs body
 
--- | ModuleDefn ::= module Identifier interface Interface body ModuleBody
-moduleDefn :: Parser ModuleDef
-moduleDefn = do
+-- | ModuleDef ::= module Identifier interface Interface body ModuleBody
+moduleDef :: Parser ModuleDef
+moduleDef = do
   keyWord "module"
   mName <- identifier
   keyWord "interface"
