@@ -21,6 +21,7 @@ tests = TestList
   , testLet
   , testCond
   , testProc
+  , testModule
   ]
 
 testLet :: Test
@@ -92,6 +93,32 @@ testProc = TestList
            "let f = proc (x: int, y: int, z: int) + (x, * (y, z)) in (f 1 2 3)"
   , testError "Too many parameters" "(proc () 1 1)"
   , testError "Too many arguments" "(proc (x: int, y: int) +(x, y) 1)"
+  ]
+
+testModule :: Test
+testModule = TestList
+  [ testEq "Test program with modules"
+           (ExprNum 44)
+           $ unlines
+             [ "module m1"
+             , "interface"
+             , "  [a : int"
+             , "   b : int"
+             , "   c : int]"
+             , "body"
+             , "  [a = 33"
+             , "   b = 44"
+             , "   c = 55]"
+             , "module m2"
+             , "interface"
+             , "  [a : int"
+             , "   b : int]"
+             , "body"
+             , "  [a = 66"
+             , "   b = 77]"
+             , "let z = 11"
+             , "in -(z, -(from m1 take a, from m2 take a))"
+             ]
   ]
 
 testEq :: String -> ExpressedValue -> String -> Test

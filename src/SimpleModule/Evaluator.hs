@@ -24,6 +24,10 @@ liftMaybe :: LangError -> Maybe a -> Try a
 liftMaybe _ (Just x) = return x
 liftMaybe y Nothing  = throwError y
 
+forceEnvTry :: EnvTry a -> a
+forceEnvTry (Left e)  = error $ show e
+forceEnvTry (Right x) = x
+
 run :: String -> EvaluateResult
 run input = parseProgram input >>= evalProgram
 
@@ -32,8 +36,13 @@ liftTypeError (Right x)  = return x
 liftTypeError (Left err) = throwError (TypeCheckerError err)
 
 eval :: [ModuleDef] -> Expression -> EvaluateResult
-eval defs expr =
-  liftTypeError (typeOfExpression defs expr) >> valueOf expr empty
+eval defs expr = do
+  liftTypeError (typeOfExpression defs expr)
+  env <- addModuleDefs defs empty
+  valueOf expr env
+
+addModuleDefs :: [ModuleDef] -> Environment -> Try Environment
+addModuleDefs = undefined
 
 evalProgram :: Program -> EvaluateResult
 evalProgram (Prog mDefs expr) = eval mDefs expr
@@ -48,6 +57,7 @@ valueOf (CondExpr pairs) env           = evalCondExpr pairs env
 valueOf (LetExpr bindings body) env    = evalLetExpr bindings body env
 valueOf (ProcExpr params body) env     = evalProcExpr params body env
 valueOf (CallExpr rator rand) env      = evalCallExpr rator rand env
+valueOf (QualifiedVarExpr m v) env     = evalQualifiedVarExpr m v env
 
 evalConstExpr :: ExpressedValue -> EvaluateResult
 evalConstExpr = Right
@@ -217,3 +227,7 @@ safeZip names args = if nl == pl
   then return $ zip names args
   else throwError $ ArgNumMismatch (toInteger nl) args
   where (nl, pl) = (length names, length args)
+
+evalQualifiedVarExpr :: String -> String -> Environment -> EvaluateResult
+evalQualifiedVarExpr mName vName env =
+  return . denoToExpr . forceEnvTry $ applyNamed env mName vName
