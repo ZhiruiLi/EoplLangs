@@ -5,9 +5,7 @@ import qualified SimpleModule.ParserSuite      as ParseTest
 import qualified SimpleModule.TypeCheckerSuite as CheckerTest
 import           Test.HUnit
 
-tests = TestList [
-                -- EvalTest.tests
-                --  ,
-                 ParseTest.tests
+tests = TestList [ EvalTest.tests
+                 , ParseTest.tests
                  , CheckerTest.tests
                  ]

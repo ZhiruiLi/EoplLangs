@@ -42,7 +42,30 @@ eval defs expr = do
   valueOf expr env
 
 addModuleDefs :: [ModuleDef] -> Environment -> Try Environment
-addModuleDefs = undefined
+addModuleDefs [] env = return env
+addModuleDefs (ModuleDef name iface body : ds) env = do
+  newEnv <- addModuleBody name body env
+  pairs <- findModuleIface name iface newEnv
+  addModuleDefs ds (addNamed name pairs env)
+
+addModuleBody :: String -> ModuleBody -> Environment -> Try Environment
+addModuleBody name (ModuleBody defs) = addModuleBody' defs
+  where
+    addModuleBody' :: [Definition] -> Environment -> Try Environment
+    addModuleBody' [] env = return env
+    addModuleBody' (Definition k e : ds) env = do
+      v <- valueOf e env
+      addModuleBody' ds $ extendNamed name k (exprToDeno v) env
+
+findModuleIface :: String -> Interface -> Environment
+                -> Try [(String, DenotedValue)]
+findModuleIface name (Interface decls) env = findIfaces decls []
+  where
+    findIfaces :: [Declaration] -> [(String, DenotedValue)]
+               -> Try [(String, DenotedValue)]
+    findIfaces [] acc = return $ reverse acc
+    findIfaces (Declaration k _ : ds) acc =
+      findIfaces ds ((k, forceEnvTry $ applyNamed env name k) : acc)
 
 evalProgram :: Program -> EvaluateResult
 evalProgram (Prog mDefs expr) = eval mDefs expr
